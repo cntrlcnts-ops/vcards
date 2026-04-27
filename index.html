@@ -100,257 +100,6 @@
     }
   </script>
   <style>body { box-sizing: border-box; }</style>
- </head>
- <body class="h-full bg-gray-50 overflow-hidden">
-  <!-- LOGIN SCREEN -->
-  <div id="login-screen" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-   <div class="w-full max-w-md">
-    <div class="bg-white rounded-2xl shadow-2xl p-8">
-     <div class="text-center mb-8">
-      <h1 id="app-title" class="text-3xl font-bold text-gray-800" style="font-family: Playfair Display, serif;">VCard Creator</h1>
-      <p class="text-gray-500 text-sm mt-2">Crie cartões digitais profissionais</p>
-     </div>
-     <div class="space-y-4">
-      <div>
-       <label class="block text-xs font-medium text-gray-600 mb-1">Email</label> <input id="login-email" type="email" placeholder="seu@email.com" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
-      </div>
-      <div>
-       <label class="block text-xs font-medium text-gray-600 mb-1">Senha</label> <input id="login-password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
-      </div><button onclick="doLogin(event)" class="w-full py-2.5 rounded-lg text-white font-medium text-sm transition" style="background: #1a6b4a;">Entrar</button>
-     </div>
-     <div id="login-error" class="text-xs text-red-600 text-center mt-4 hidden"></div>
-    </div>
-   </div>
-  </div><!-- APP -->
-  <div id="app" style="display:none" class="h-full w-full flex">
-   <!-- SIDEBAR -->
-   <aside id="sidebar" class="w-60 flex-shrink-0 flex flex-col" style="background: linear-gradient(180deg, #312e81 0%, #4338ca 100%);">
-    <div class="p-5 pb-3">
-     <h1 class="text-white text-xl font-bold" style="font-family: 'Playfair Display', serif;">VCard Creator</h1>
-     <p class="text-indigo-300 text-xs mt-1">Cartões digitais profissionais</p>
-    </div>
-    <nav class="flex-1 px-3 py-2 space-y-1">
-     <button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
-    </nav>
-    <div class="p-4 border-t border-indigo-600">
-     <div class="text-indigo-300 text-xs">
-      Total de cartões: <span id="card-count" class="text-white font-semibold">0</span>
-     </div><button onclick="doLogout()" class="w-full mt-3 px-3 py-2 rounded-lg text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 transition flex items-center justify-center gap-2"> <i data-lucide="log-out" class="w-4 h-4"></i> Sair </button>
-    </div>
-   </aside>
-   <div class="flex-1 flex flex-col h-full overflow-hidden">
-    <!-- TOPBAR -->
-    <header class="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 flex-shrink-0">
-     <div>
-      <h2 id="section-title" class="text-lg font-semibold text-gray-800">Dashboard</h2>
-      <p id="section-desc" class="text-xs text-gray-400">Os seus cartões guardados</p>
-     </div>
-     <div class="flex items-center gap-2">
-      <button id="save-btn" onclick="saveCard()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium" style="background: #4338ca; display:none;"> <i data-lucide="save" class="w-4 h-4"></i> Guardar </button>
-     </div>
-    </header><!-- CONTENT AREA -->
-    <div class="flex-1 overflow-auto p-6">
-     <!-- DASHBOARD -->
-     <section id="sec-dashboard" class="fade-in">
-      <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-      <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-gray-400">
-       <i data-lucide="credit-card" class="w-16 h-16 mb-4 opacity-30"></i>
-       <p class="text-lg font-medium">Nenhum cartão criado</p>
-       <p class="text-sm mt-1">Comece a criar o seu primeiro cartão digital</p>
-      </div>
-     </section><!-- PERFIL -->
-     <section id="sec-perfil" style="display:none;">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-       <div class="space-y-4">
-        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
-         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Fotos</h4>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-cover">Foto de Capa</label> <input id="f-cover" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
-          <p class="text-xs text-gray-400 mt-1">Recomendado: 800x300px</p>
-         </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
-          <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p>
-         </div>
-        </div>
-        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
-         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Informações Pessoais</h4>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
-         </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
-         </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
-         </div>
-        </div>
-       </div><!-- LIVE PREVIEW -->
-       <div>
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Pré-visualização</h4>
-        <div id="preview-card" class="bg-white rounded-2xl border border-gray-200 shadow-sm" style="overflow:visible;">
-         <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;">
-          <img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
-          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow-hidden z-10" style="color:#4338ca;">
-           <img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
-           <div id="preview-avatar">
-            J
-           </div>
-          </div>
-         </div>
-         <div class="pt-12 px-5 pb-5 overflow-hidden" style="border-radius:0 0 1rem 1rem;">
-          <h3 id="preview-name" class="font-bold text-gray-800 text-lg">João Silva</h3>
-          <p id="preview-role" class="text-sm text-gray-500">Designer Gráfico</p>
-          <p id="preview-company" class="text-xs text-gray-400 mt-0.5">Estúdio Criativo</p>
-          <div class="mt-4 space-y-2">
-           <div id="preview-phone-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="phone" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-phone"></span>
-           </div>
-           <div id="preview-email-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="mail" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-email"></span>
-           </div>
-           <div id="preview-web-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="globe" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-web"></span>
-           </div>
-           <div id="preview-addr-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-addr"></span>
-           </div>
-          </div>
-          <div id="preview-socials" class="flex gap-2 mt-3 flex-wrap"></div>
-         </div>
-        </div>
-       </div>
-      </div>
-     </section><!-- CONTACTOS -->
-     <section id="sec-contactos" style="display:none;">
-      <div class="max-w-lg space-y-4">
-       <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados de Contacto</h4>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telefone</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 912 345 678">
-        </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="joao@email.com">
-        </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
-        </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
-        </div>
-        <div class="pt-3 border-t border-gray-200">
-         <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Redes Sociais</h5>
-         <div class="space-y-3">
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
-          </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
-          </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
-          </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
-          </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
-          </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
-          </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
-          </div>
-         </div>
-        </div>
-       </div>
-      </div>
-     </section><!-- DESIGN -->
-     <section id="sec-design" style="display:none;">
-      <div class="max-w-2xl space-y-6">
-       <div class="bg-white rounded-xl p-5 border border-gray-200">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Cor de Destaque</h4>
-        <div class="flex flex-wrap gap-3">
-         <button onclick="pickColor('#4338ca')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#4338ca;" data-color="#4338ca"></button> <button onclick="pickColor('#0891b2')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#0891b2;" data-color="#0891b2"></button> <button onclick="pickColor('#059669')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#059669;" data-color="#059669"></button> <button onclick="pickColor('#d97706')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#d97706;" data-color="#d97706"></button> <button onclick="pickColor('#dc2626')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#dc2626;" data-color="#dc2626"></button> <button onclick="pickColor('#7c3aed')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#7c3aed;" data-color="#7c3aed"></button> <button onclick="pickColor('#be185d')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#be185d;" data-color="#be185d"></button> <button onclick="pickColor('#1e293b')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#1e293b;" data-color="#1e293b"></button>
-        </div>
-        <div class="mt-4 flex items-center gap-3">
-         <label class="text-xs text-gray-500">Cor personalizada:</label> <input type="color" id="custom-color" value="#4338ca" onchange="pickColor(this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
-        </div>
-       </div>
-       <div class="bg-white rounded-xl p-5 border border-gray-200">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Template</h4>
-        <div class="grid grid-cols-3 gap-3">
-         <div onclick="pickTemplate('classic')" class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" data-tpl="classic">
-          <div class="h-12 rounded-lg mb-2" style="background: linear-gradient(135deg, #4338ca, #6366f1);"></div><span class="text-xs font-medium text-gray-600">Clássico</span>
-         </div>
-         <div onclick="pickTemplate('minimal')" class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" data-tpl="minimal">
-          <div class="h-12 rounded-lg mb-2 bg-gray-100 border border-gray-200"></div><span class="text-xs font-medium text-gray-600">Minimal</span>
-         </div>
-         <div onclick="pickTemplate('bold')" class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" data-tpl="bold">
-          <div class="h-12 rounded-lg mb-2 bg-gray-900"></div><span class="text-xs font-medium text-gray-600">Bold</span>
-         </div>
-        </div>
-       </div>
-      </div>
-     </section><!-- SHARE -->
-     <section id="sec-share" style="display:none;">
-      <div class="max-w-lg space-y-4">
-       <div class="bg-white rounded-xl p-5 border border-gray-200">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Partilhar Cartão</h4>
-        <p class="text-sm text-gray-500 mb-4">Selecione um cartão para gerar um link público e QR Code</p><select id="share-select" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm mb-3"> <option value="">-- Escolha um cartão --</option> </select>
-        <div id="share-container" class="hidden space-y-4">
-         <div>
-          <label class="text-xs font-medium text-gray-600">Link Público:</label>
-          <div class="flex gap-2 mt-1">
-           <input id="share-link" type="text" readonly class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50"> <button onclick="copyLink()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Copiar</button>
-          </div>
-         </div>
-         <div>
-          <label class="text-xs font-medium text-gray-600 mb-2 block">QR Code:</label>
-          <div id="share-qr" class="flex justify-center p-4 bg-gray-50 rounded-lg"></div>
-         </div>
-        </div>
-       </div>
-      </div>
-     </section><!-- EXPORT -->
-     <section id="sec-export" style="display:none;">
-      <div class="max-w-lg space-y-4">
-       <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Exportar Cartão</h4>
-        <p class="text-sm text-gray-500">Escolha o formato de exportação para o cartão.</p>
-        <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden">
-         <i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.
-        </div>
-        <div id="export-actions" class="flex gap-3">
-         <button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF </button> <button onclick="downloadQR()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="qr-code" class="w-5 h-5"></i> QR Code </button>
-        </div>
-       </div>
-       <div id="qr-container" class="bg-white rounded-xl p-5 border border-gray-200 hidden">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">QR Code</h4>
-        <div id="qr-canvas" class="flex justify-center"></div>
-        <p class="text-xs text-gray-400 text-center mt-2">Clique com o botão direito para guardar a imagem</p>
-       </div>
-      </div>
-     </section>
-    </div>
-   </div>
-  </div><!-- DELETE MODAL -->
-  <div id="delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.4);">
-   <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
-    <h4 class="font-semibold text-gray-800 mb-2">Eliminar cartão?</h4>
-    <p class="text-sm text-gray-500 mb-4">Esta ação não pode ser desfeita.</p>
-    <div class="flex gap-3 justify-end">
-     <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button> <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
-    </div>
-   </div>
-  </div><!-- TOAST -->
-  <div id="toast" class="fixed top-4 right-4 z-50 hidden">
-   <div class="toast-msg flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white" style="background:#4338ca;">
-    <i data-lucide="check-circle" class="w-4 h-4"></i> <span id="toast-text"></span>
-   </div>
-  </div>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
   <script>
 let sb = null;
 let currentUser = null;
@@ -361,6 +110,8 @@ let currentTemplate = 'classic';
 let deleteTarget = null;
 let coverImageData = null;
 let avatarImageData = null;
+let viewingPublicCard = null;
+const ADMIN_EMAILS = ['admin@vcard.ao'];
 
 const sectionMeta = {
   dashboard: { title: 'Dashboard', desc: 'Os seus cartões guardados' },
@@ -368,13 +119,133 @@ const sectionMeta = {
   contactos: { title: 'Contactos', desc: 'Adicione os seus dados de contacto' },
   design: { title: 'Design', desc: 'Personalize a aparência do cartão' },
   share: { title: 'Partilhar', desc: 'Crie links e QR Codes públicos' },
-  export: { title: 'Exportar', desc: 'Exporte o seu cartão digital' }
+  export: { title: 'Exportar', desc: 'Exporte o seu cartão digital' },
+  admin: { title: 'Administração', desc: 'Gerencie todos os cartões do sistema' }
 };
 
 async function initSupabase() {
   const SUPABASE_URL = 'https://tgobchnkeewoonnsesqv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs';
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function checkPublicView() {
+  const params = new URLSearchParams(window.location.search);
+  const viewId = params.get('view');
+  if (viewId) {
+    loadPublicCard(viewId);
+    return true;
+  }
+  return false;
+}
+
+async function loadPublicCard(cardId) {
+  try {
+    const { data, error } = await sb.from('vcards').select('*').eq('id', cardId).single();
+    if (error || !data) {
+      showToast('Cartão não encontrado');
+      return;
+    }
+    viewingPublicCard = data;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    displayPublicCard(data);
+  } catch (err) {
+    showToast('Erro ao carregar cartão');
+  }
+}
+
+function displayPublicCard(card) {
+  const body = document.body;
+  body.innerHTML = '';
+  
+  const color = card.cor_principal || '#4338ca';
+  const tpl = card.template || 'classic';
+  let bannerBg;
+  if (tpl === 'classic') {
+    bannerBg = `linear-gradient(135deg, ${color}, ${lightenColor(color, 30)})`;
+  } else if (tpl === 'minimal') {
+    bannerBg = '#f3f4f6';
+  } else {
+    bannerBg = '#111827';
+  }
+
+  const html = `
+    <div style="width:100%; min-height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
+      <div style="width:100%; max-width:480px; background:white; border-radius:24px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
+        <!-- Banner opcional -->
+        <div style="height:80px; background:${card.cover_image ? 'url(' + card.cover_image + ') center/cover' : bannerBg};"></div>
+        
+        <!-- Conteúdo centralizado -->
+        <div style="padding:40px 24px 32px 24px; text-align:center;">
+          <!-- Avatar grande centralizado -->
+          <div style="width:120px; height:120px; border-radius:50%; background:white; border:4px solid ${color}; display:flex; align-items:center; justify-content:center; font-size:48px; font-weight:bold; color:${color}; overflow:hidden; margin:0 auto -20px; position:relative; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+            ${card.avatar_image ? '<img src="' + card.avatar_image + '" style="width:100%; height:100%; object-fit:cover;">' : (card.nome ? card.nome.charAt(0).toUpperCase() : 'C')}
+          </div>
+          
+          <!-- Informações principais -->
+          <div style="margin-top:28px;">
+            <h1 style="font-size:28px; font-weight:700; margin:0; color:#1f2937; line-height:1.2;">${escHtml(card.nome || 'Sem nome')}</h1>
+            ${card.cargo ? '<p style="font-size:16px; color:' + color + '; margin:8px 0 0; font-weight:600;">${escHtml(card.cargo)}</p>' : ''}
+            ${card.empresa ? '<p style="font-size:13px; color:#6b7280; margin:4px 0 0; font-weight:500;">${escHtml(card.empresa)}</p>' : ''}
+          </div>
+          
+          <!-- Contactos -->
+          <div style="margin:28px 0 0; display:flex; flex-direction:column; gap:12px; align-items:center;">
+            ${card.telemovel ? '<a href="tel:${card.telemovel}" style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:10px 0; border-radius:8px; transition:all 0.2s;"><i data-lucide="phone" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.telemovel) + '</span></a>' : ''}
+            ${card.email ? '<a href="mailto:${card.email}" style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:10px 0; border-radius:8px; transition:all 0.2s;"><i data-lucide="mail" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.email) + '</span></a>' : ''}
+            ${card.website ? '<a href="' + escHtml(card.website) + '" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:10px 0; border-radius:8px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.website) + '</span></a>' : ''}
+            ${card.address ? '<div style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; padding:10px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.address) + '</span></div>' : ''}
+          </div>
+          
+          <!-- Redes sociais -->
+          ${getSocialLinksHTML(card, color)}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  body.innerHTML = html;
+  lucide.createIcons();
+}
+
+function getSocialLinksHTML(card, color) {
+  const socials = [
+    { key: 'instagram', icon: 'instagram', color: '#E4405F', prefix: 'https://instagram.com/' },
+    { key: 'facebook', icon: 'facebook', color: '#1877F2', prefix: 'https://facebook.com/' },
+    { key: 'linkedin', icon: 'linkedin', color: '#0077B5', prefix: 'https://linkedin.com/in/' },
+    { key: 'whatsapp', icon: 'message-circle', color: '#25D366', prefix: 'https://wa.me/' },
+    { key: 'youtube', icon: 'youtube', color: '#FF0000', prefix: 'https://youtube.com/@' },
+    { key: 'tiktok', icon: 'music', color: '#000000', prefix: 'https://tiktok.com/@' },
+    { key: 'twitter', icon: 'twitter', color: '#1DA1F2', prefix: 'https://twitter.com/' }
+  ];
+
+  let html = '<div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap; justify-content:center;">';
+  socials.forEach(social => {
+    const val = card[social.key];
+    if (val && val.trim()) {
+      const url = (social.key === 'whatsapp' ? social.prefix + val : social.prefix + val).replace(/^https:\/\//, 'https://');
+      html += `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-flex; width:40px; height:40px; align-items:center; justify-content:center; border-radius:50%; background-color:${social.color}20; text-decoration:none; transition:all 0.2s; border:1px solid transparent;"><i data-lucide="${social.icon}" style="width:18px; height:18px; color:${social.color};"></i></a>`;
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+function lightenColor(hex, pct) {
+  let r = parseInt(hex.slice(1,3), 16);
+  let g = parseInt(hex.slice(3,5), 16);
+  let b = parseInt(hex.slice(5,7), 16);
+  r = Math.min(255, r + Math.round((255 - r) * pct / 100));
+  g = Math.min(255, g + Math.round((255 - g) * pct / 100));
+  b = Math.min(255, b + Math.round((255 - b) * pct / 100));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
 async function doLogin(e) {
@@ -411,6 +282,13 @@ async function doLogin(e) {
     currentUser = data.user;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    
+    if (ADMIN_EMAILS.includes(currentUser.email)) {
+      document.getElementById('admin-section').style.display = 'block';
+    } else {
+      document.getElementById('admin-section').style.display = 'none';
+    }
+    
     loadUserCards();
     lucide.createIcons();
   } catch (err) {
@@ -436,66 +314,31 @@ async function doLogout() {
 }
 
 function navTo(sec) {
-  // Esconde TODAS as seções
   document.querySelectorAll('section[id^="sec-"]').forEach(s => {
     s.style.display = 'none';
   });
   
-  // Mostra apenas a seção selecionada
   const targetSection = document.getElementById('sec-' + sec);
   if (targetSection) {
     targetSection.style.display = 'block';
   }
   
-  // Atualiza botões de navegação
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-nav="${sec}"]`).classList.add('active');
   
-  // Atualiza título e descrição
   if (sectionMeta[sec]) {
     document.getElementById('section-title').textContent = sectionMeta[sec].title;
     document.getElementById('section-desc').textContent = sectionMeta[sec].desc;
   }
 
-  // Ações específicas por seção
   if (sec === 'dashboard') renderDashboard();
   if (sec === 'share') populateShareSelect();
   if (sec === 'export') checkExportReady();
+  if (sec === 'admin') loadAdminPanel();
 
-  // Mostra/esconde botão guardar
   const editSections = ['perfil', 'contactos', 'design', 'export'];
   document.getElementById('save-btn').style.display = editSections.includes(sec) ? 'flex' : 'none';
 }
-
-document.getElementById('f-cover').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    coverImageData = file;
-    const img = document.getElementById('preview-cover-img');
-    img.src = event.target.result;
-    img.style.display = 'block';
-    document.getElementById('preview-banner').style.background = 'none';
-    updatePreview();
-  };
-  reader.readAsDataURL(file);
-});
-
-document.getElementById('f-avatar').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    avatarImageData = file;
-    const img = document.getElementById('preview-avatar-img');
-    img.src = event.target.result;
-    img.style.display = 'block';
-    document.getElementById('preview-avatar').style.display = 'none';
-    updatePreview();
-  };
-  reader.readAsDataURL(file);
-});
 
 function updatePreview() {
   const nome = document.getElementById('f-name').value || 'João Silva';
@@ -585,16 +428,6 @@ function setPreviewRow(rowId, spanId, val) {
   }
 }
 
-function lightenColor(hex, pct) {
-  let r = parseInt(hex.slice(1,3), 16);
-  let g = parseInt(hex.slice(3,5), 16);
-  let b = parseInt(hex.slice(5,7), 16);
-  r = Math.min(255, r + Math.round((255 - r) * pct / 100));
-  g = Math.min(255, g + Math.round((255 - g) * pct / 100));
-  b = Math.min(255, b + Math.round((255 - b) * pct / 100));
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
 function pickColor(c) {
   currentColor = c;
   document.getElementById('custom-color').value = c;
@@ -633,7 +466,6 @@ async function saveCard() {
     let coverUrl = editingCard?.cover_image || null;
     let avatarUrl = editingCard?.avatar_image || null;
 
-    // Upload da imagem de capa se mudou
     if (coverImageData && coverImageData instanceof File) {
       const ext = coverImageData.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
       const fileName = `${currentUser.id}_cover_${Date.now()}.${ext || 'png'}`;
@@ -646,7 +478,6 @@ async function saveCard() {
       coverUrl = urlData?.publicUrl || null;
     }
 
-    // Upload da imagem de avatar se mudou
     if (avatarImageData && avatarImageData instanceof File) {
       const ext = avatarImageData.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
       const fileName = `${currentUser.id}_avatar_${Date.now()}.${ext || 'png'}`;
@@ -683,7 +514,6 @@ async function saveCard() {
 
     let result;
     if (editingCard) {
-      // UPDATE: não filtra por created_by (a RLS valida automaticamente)
       result = await sb.from('vcards').update(data).eq('id', editingCard.id);
     } else {
       data.created_by = currentUser.id;
@@ -691,15 +521,11 @@ async function saveCard() {
       result = await sb.from('vcards').insert([data]);
     }
 
-    if (result.error) {
-      console.error('Erro Supabase:', result.error);
-      throw result.error;
-    }
+    if (result.error) throw result.error;
     showToast(editingCard ? 'Cartão atualizado!' : 'Cartão guardado!');
     if (!editingCard) clearForm();
     await loadUserCards();
   } catch (err) {
-    console.error('Erro ao guardar:', err);
     showToast('Erro ao guardar: ' + (err.message || 'tente novamente'));
   } finally {
     btn.disabled = false;
@@ -711,9 +537,7 @@ async function saveCard() {
 function clearForm() {
   ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter', 'f-cover', 'f-avatar'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) {
-      el.value = '';
-    }
+    if (el) el.value = '';
   });
   coverImageData = null;
   avatarImageData = null;
@@ -791,7 +615,7 @@ function createCardElement(card) {
       <p class="text-xs text-gray-500">${escHtml(card.cargo || '')}${card.empresa ? ' · ' + escHtml(card.empresa) : ''}</p>
       <div class="flex gap-2 mt-3">
         <button onclick="editCard('${card.id}')" class="flex items-center gap-1 text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600">
-          <i data-lucide="edit-2" class="w-3 h-3"></i> Editar
+          <i data-lucide="pen" class="w-3 h-3"></i> Editar
         </button>
         <button onclick="requestDelete('${card.id}')" class="flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-500">
           <i data-lucide="trash-2" class="w-3 h-3"></i> Eliminar
@@ -800,12 +624,6 @@ function createCardElement(card) {
     </div>
   `;
   return div;
-}
-
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
 }
 
 function editCard(id) {
@@ -1011,18 +829,464 @@ function showToast(msg) {
   setTimeout(() => t.classList.add('hidden'), 3000);
 }
 
+async function loadAdminPanel() {
+  if (!currentUser || !ADMIN_EMAILS.includes(currentUser.email)) {
+    showToast('Sem permissões de administrador');
+    return;
+  }
+
+  try {
+    const { data: allCardsData, error } = await sb.from('vcards').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const uniqueUsers = new Set(allCardsData.map(c => c.created_by)).size;
+    const todayCards = allCardsData.filter(c => {
+      const createdDate = new Date(c.created_at).toDateString();
+      const today = new Date().toDateString();
+      return createdDate === today;
+    }).length;
+
+    document.getElementById('admin-users-count').textContent = uniqueUsers;
+    document.getElementById('admin-cards-count').textContent = allCardsData.length;
+    document.getElementById('admin-today-count').textContent = todayCards;
+
+    const list = document.getElementById('admin-cards-list');
+    list.innerHTML = '';
+
+    allCardsData.forEach(card => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition';
+      
+      const info = document.createElement('div');
+      info.className = 'flex-1';
+      info.innerHTML = `
+        <p class="text-sm font-medium text-gray-800">${escHtml(card.nome || 'Sem nome')}</p>
+        <p class="text-xs text-gray-500">${card.cargo ? escHtml(card.cargo) + ' · ' : ''}${card.empresa ? escHtml(card.empresa) : ''}</p>
+        <p class="text-xs text-gray-400 mt-1">Criado: ${new Date(card.created_at).toLocaleString('pt-PT')}</p>
+      `;
+      row.appendChild(info);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'px-3 py-1.5 rounded text-sm text-white bg-red-500 hover:bg-red-600 transition';
+      deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4 inline"></i>';
+      deleteBtn.onclick = () => adminDeleteCard(card);
+      row.appendChild(deleteBtn);
+
+      list.appendChild(row);
+    });
+
+    lucide.createIcons();
+  } catch (err) {
+    showToast('Erro ao carregar dados');
+  }
+}
+
+async function adminDeleteCard(card) {
+  const confirmMsg = `Eliminar cartão de ${card.nome}?`;
+  const userConfirm = document.createElement('div');
+  userConfirm.className = 'fixed inset-0 z-50 flex items-center justify-center';
+  userConfirm.style.background = 'rgba(0,0,0,0.4)';
+  userConfirm.innerHTML = `
+    <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+      <h4 class="font-semibold text-gray-800 mb-2">Confirmar eliminação?</h4>
+      <p class="text-sm text-gray-500 mb-4">${confirmMsg}</p>
+      <div class="flex gap-3 justify-end">
+        <button onclick="this.parentElement.parentElement.remove()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
+        <button id="confirm-admin-delete" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(userConfirm);
+
+  document.getElementById('confirm-admin-delete').onclick = async () => {
+    const btn = document.getElementById('confirm-admin-delete');
+    btn.disabled = true;
+    btn.textContent = 'A eliminar...';
+
+    try {
+      const { error } = await sb.from('vcards').delete().eq('id', card.id);
+      if (error) throw error;
+      showToast('Cartão eliminado!');
+      userConfirm.remove();
+      await loadAdminPanel();
+    } catch (err) {
+      showToast('Erro ao eliminar cartão');
+      btn.disabled = false;
+      btn.textContent = 'Eliminar';
+    }
+  };
+}
+
+(async () => {
+  await initSupabase();
+  
+  if (!checkPublicView()) {
+    updatePreview();
+    pickColor('#4338ca');
+    pickTemplate('classic');
+    lucide.createIcons();
+
+    document.getElementById('f-cover').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        coverImageData = file;
+        const img = document.getElementById('preview-cover-img');
+        img.src = event.target.result;
+        img.style.display = 'block';
+        document.getElementById('preview-banner').style.background = 'none';
+        updatePreview();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('f-avatar').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        avatarImageData = file;
+        const img = document.getElementById('preview-avatar-img');
+        img.src = event.target.result;
+        img.style.display = 'block';
+        document.getElementById('preview-avatar').style.display = 'none';
+        updatePreview();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updatePreview);
+    });
+  }
+})();
+  </script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gray-50 overflow-hidden">
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+   <div class="w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+     <div class="text-center mb-8">
+      <h1 id="app-title" class="text-3xl font-bold text-gray-800" style="font-family: Playfair Display, serif;">VCard Creator</h1>
+      <p class="text-gray-500 text-sm mt-2">Crie cartões digitais profissionais</p>
+     </div>
+     <div class="space-y-4">
+      <div>
+       <label class="block text-xs font-medium text-gray-600 mb-1">Email</label> <input id="login-email" type="email" placeholder="seu@email.com" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
+      </div>
+      <div>
+       <label class="block text-xs font-medium text-gray-600 mb-1">Senha</label> <input id="login-password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
+      </div><button onclick="doLogin(event)" class="w-full py-2.5 rounded-lg text-white font-medium text-sm transition" style="background: #1a6b4a;">Entrar</button>
+     </div>
+     <div id="login-error" class="text-xs text-red-600 text-center mt-4 hidden"></div>
+    </div>
+   </div>
+  </div><!-- APP -->
+  <div id="app" style="display:none" class="h-full w-full flex">
+   <!-- SIDEBAR -->
+   <aside id="sidebar" class="w-60 flex-shrink-0 flex flex-col" style="background: linear-gradient(180deg, #312e81 0%, #4338ca 100%);">
+    <div class="p-5 pb-3">
+     <h1 class="text-white text-xl font-bold" style="font-family: 'Playfair Display', serif;">VCard Creator</h1>
+     <p class="text-indigo-300 text-xs mt-1">Cartões digitais profissionais</p>
+    </div>
+    <nav class="flex-1 px-3 py-2 space-y-1">
+     <button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
+     <div id="admin-section" style="display:none;" class="border-t border-indigo-600 mt-2 pt-2">
+      <button onclick="navTo('admin')" data-nav="admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="shield" class="w-4 h-4"></i> Administração </button>
+     </div>
+    </nav>
+    <div class="p-4 border-t border-indigo-600">
+     <div class="text-indigo-300 text-xs">
+      Total de cartões: <span id="card-count" class="text-white font-semibold">0</span>
+     </div><button onclick="doLogout()" class="w-full mt-3 px-3 py-2 rounded-lg text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 transition flex items-center justify-center gap-2"> <i data-lucide="log-out" class="w-4 h-4"></i> Sair </button>
+    </div>
+   </aside>
+   <div class="flex-1 flex flex-col h-full overflow-hidden">
+    <!-- TOPBAR -->
+    <header class="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+     <div>
+      <h2 id="section-title" class="text-lg font-semibold text-gray-800">Dashboard</h2>
+      <p id="section-desc" class="text-xs text-gray-400">Os seus cartões guardados</p>
+     </div>
+     <div class="flex items-center gap-2">
+      <button id="save-btn" onclick="saveCard()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium" style="background: #4338ca; display:none;"> <i data-lucide="save" class="w-4 h-4"></i> Guardar </button>
+     </div>
+    </header><!-- CONTENT AREA -->
+    <div class="flex-1 overflow-auto p-6">
+     <!-- DASHBOARD -->
+     <section id="sec-dashboard" class="fade-in">
+      <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-gray-400">
+       <i data-lucide="credit-card" class="w-16 h-16 mb-4 opacity-30"></i>
+       <p class="text-lg font-medium">Nenhum cartão criado</p>
+       <p class="text-sm mt-1">Comece a criar o seu primeiro cartão digital</p>
+      </div>
+     </section><!-- PERFIL -->
+     <section id="sec-perfil" style="display:none;">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div class="space-y-4">
+        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
+         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Fotos</h4>
+         <div>
+          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-cover">Foto de Capa</label> <input id="f-cover" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
+          <p class="text-xs text-gray-400 mt-1">Recomendado: 800x300px</p>
+         </div>
+         <div>
+          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
+          <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p>
+         </div>
+        </div>
+        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
+         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Informações Pessoais</h4>
+         <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
+         </div>
+         <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
+         </div>
+         <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
+         </div>
+        </div>
+       </div><!-- LIVE PREVIEW -->
+       <div>
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Pré-visualização</h4>
+        <div id="preview-card" class="bg-white rounded-2xl border border-gray-200 shadow-sm" style="overflow:visible;">
+         <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;">
+          <img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow-hidden z-10" style="color:#4338ca;">
+           <img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+           <div id="preview-avatar">
+            J
+           </div>
+          </div>
+         </div>
+         <div class="pt-12 px-5 pb-5 overflow-hidden" style="border-radius:0 0 1rem 1rem;">
+          <h3 id="preview-name" class="font-bold text-gray-800 text-lg">João Silva</h3>
+          <p id="preview-role" class="text-sm text-gray-500">Designer Gráfico</p>
+          <p id="preview-company" class="text-xs text-gray-400 mt-0.5">Estúdio Criativo</p>
+          <div class="mt-4 space-y-2">
+           <div id="preview-phone-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
+            <i data-lucide="phone" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-phone"></span>
+           </div>
+           <div id="preview-email-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
+            <i data-lucide="mail" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-email"></span>
+           </div>
+           <div id="preview-web-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
+            <i data-lucide="globe" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-web"></span>
+           </div>
+           <div id="preview-addr-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-addr"></span>
+           </div>
+          </div>
+          <div id="preview-socials" class="flex gap-2 mt-3 flex-wrap"></div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </section><!-- CONTACTOS -->
+     <section id="sec-contactos" style="display:none;">
+      <div class="max-w-lg space-y-4">
+       <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados de Contacto</h4>
+        <div>
+         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telefone</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 912 345 678">
+        </div>
+        <div>
+         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="joao@email.com">
+        </div>
+        <div>
+         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
+        </div>
+        <div>
+         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
+        </div>
+        <div class="pt-3 border-t border-gray-200">
+         <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Redes Sociais</h5>
+         <div class="space-y-3">
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          </div>
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
+          </div>
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
+          </div>
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
+          </div>
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
+          </div>
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          </div>
+          <div>
+           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          </div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </section><!-- DESIGN -->
+     <section id="sec-design" style="display:none;">
+      <div class="max-w-2xl space-y-6">
+       <div class="bg-white rounded-xl p-5 border border-gray-200">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Cor de Destaque</h4>
+        <div class="flex flex-wrap gap-3">
+         <button onclick="pickColor('#4338ca')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#4338ca;" data-color="#4338ca"></button> <button onclick="pickColor('#0891b2')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#0891b2;" data-color="#0891b2"></button> <button onclick="pickColor('#059669')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#059669;" data-color="#059669"></button> <button onclick="pickColor('#d97706')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#d97706;" data-color="#d97706"></button> <button onclick="pickColor('#dc2626')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#dc2626;" data-color="#dc2626"></button> <button onclick="pickColor('#7c3aed')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#7c3aed;" data-color="#7c3aed"></button> <button onclick="pickColor('#be185d')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#be185d;" data-color="#be185d"></button> <button onclick="pickColor('#1e293b')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#1e293b;" data-color="#1e293b"></button>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+         <label class="text-xs text-gray-500">Cor personalizada:</label> <input type="color" id="custom-color" value="#4338ca" onchange="pickColor(this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+        </div>
+       </div>
+       <div class="bg-white rounded-xl p-5 border border-gray-200">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Template</h4>
+        <div class="grid grid-cols-3 gap-3">
+         <div onclick="pickTemplate('classic')" class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" data-tpl="classic">
+          <div class="h-12 rounded-lg mb-2" style="background: linear-gradient(135deg, #4338ca, #6366f1);"></div><span class="text-xs font-medium text-gray-600">Clássico</span>
+         </div>
+         <div onclick="pickTemplate('minimal')" class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" data-tpl="minimal">
+          <div class="h-12 rounded-lg mb-2 bg-gray-100 border border-gray-200"></div><span class="text-xs font-medium text-gray-600">Minimal</span>
+         </div>
+         <div onclick="pickTemplate('bold')" class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" data-tpl="bold">
+          <div class="h-12 rounded-lg mb-2 bg-gray-900"></div><span class="text-xs font-medium text-gray-600">Bold</span>
+         </div>
+        </div>
+       </div>
+      </div>
+     </section><!-- SHARE -->
+     <section id="sec-share" style="display:none;">
+      <div class="max-w-lg space-y-4">
+       <div class="bg-white rounded-xl p-5 border border-gray-200">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Partilhar Cartão</h4>
+        <p class="text-sm text-gray-500 mb-4">Selecione um cartão para gerar um link público e QR Code</p><select id="share-select" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm mb-3"> <option value="">-- Escolha um cartão --</option> </select>
+        <div id="share-container" class="hidden space-y-4">
+         <div>
+          <label class="text-xs font-medium text-gray-600">Link Público:</label>
+          <div class="flex gap-2 mt-1">
+           <input id="share-link" type="text" readonly class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50"> <button onclick="copyLink()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Copiar</button>
+          </div>
+         </div>
+         <div>
+          <label class="text-xs font-medium text-gray-600 mb-2 block">QR Code:</label>
+          <div id="share-qr" class="flex justify-center p-4 bg-gray-50 rounded-lg"></div>
+         </div>
+        </div>
+       </div>
+      </div>
+     </section><!-- EXPORT -->
+     <section id="sec-export" style="display:none;">
+      <div class="max-w-lg space-y-4">
+       <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Exportar Cartão</h4>
+        <p class="text-sm text-gray-500">Escolha o formato de exportação para o cartão.</p>
+        <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden">
+         <i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.
+        </div>
+        <div id="export-actions" class="flex gap-3">
+         <button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF </button> <button onclick="downloadQR()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="qr-code" class="w-5 h-5"></i> QR Code </button>
+        </div>
+       </div>
+       <div id="qr-container" class="bg-white rounded-xl p-5 border border-gray-200 hidden">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">QR Code</h4>
+        <div id="qr-canvas" class="flex justify-center"></div>
+        <p class="text-xs text-gray-400 text-center mt-2">Clique com o botão direito para guardar a imagem</p>
+       </div>
+      </div>
+     </section><!-- ADMIN -->
+     <section id="sec-admin" style="display:none;">
+      <div class="max-w-4xl space-y-4">
+       <div class="bg-white rounded-xl p-5 border border-gray-200">
+        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Painel de Administração</h4>
+        <p class="text-sm text-gray-500 mb-4">Gerencie todos os cartões do sistema</p>
+        <div id="admin-stats" class="grid grid-cols-3 gap-4 mb-6">
+         <div class="bg-indigo-50 rounded-lg p-4">
+          <p class="text-xs text-indigo-600 uppercase font-semibold">Total de Utilizadores</p>
+          <p id="admin-users-count" class="text-2xl font-bold text-indigo-900 mt-1">0</p>
+         </div>
+         <div class="bg-green-50 rounded-lg p-4">
+          <p class="text-xs text-green-600 uppercase font-semibold">Total de Cartões</p>
+          <p id="admin-cards-count" class="text-2xl font-bold text-green-900 mt-1">0</p>
+         </div>
+         <div class="bg-blue-50 rounded-lg p-4">
+          <p class="text-xs text-blue-600 uppercase font-semibold">Cartões Hoje</p>
+          <p id="admin-today-count" class="text-2xl font-bold text-blue-900 mt-1">0</p>
+         </div>
+        </div>
+        <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Todos os Cartões</h5>
+        <div id="admin-cards-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
+       </div>
+      </div>
+     </section>
+    </div>
+   </div>
+  </div><!-- DELETE MODAL -->
+  <div id="delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.4);">
+   <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
+    <h4 class="font-semibold text-gray-800 mb-2">Eliminar cartão?</h4>
+    <p class="text-sm text-gray-500 mb-4">Esta ação não pode ser desfeita.</p>
+    <div class="flex gap-3 justify-end">
+     <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button> <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
+    </div>
+   </div>
+  </div><!-- TOAST -->
+  <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+   <div class="toast-msg flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white" style="background:#4338ca;">
+    <i data-lucide="check-circle" class="w-4 h-4"></i> <span id="toast-text"></span>
+   </div>
+  </div>
+  <script>
 ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updatePreview);
 });
 
+document.getElementById('f-cover').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    coverImageData = file;
+    const img = document.getElementById('preview-cover-img');
+    img.src = event.target.result;
+    img.style.display = 'block';
+    document.getElementById('preview-banner').style.background = 'none';
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('f-avatar').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    avatarImageData = file;
+    const img = document.getElementById('preview-avatar-img');
+    img.src = event.target.result;
+    img.style.display = 'block';
+    document.getElementById('preview-avatar').style.display = 'none';
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+});
+
 (async () => {
   await initSupabase();
-  updatePreview();
-  pickColor('#4338ca');
-  pickTemplate('classic');
-  lucide.createIcons();
+  
+  if (!checkPublicView()) {
+    updatePreview();
+    pickColor('#4338ca');
+    pickTemplate('classic');
+    lucide.createIcons();
+  }
 })();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2dff2ec14777e3',t:'MTc3NzI5NDY4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e4273201377e3',t:'MTc3NzI5NzQ0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
