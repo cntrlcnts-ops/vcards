@@ -113,6 +113,15 @@ let avatarImageData = null;
 let viewingPublicCard = null;
 const ADMIN_EMAILS = ['admin@vcard.ao'];
 
+function saveContactToDevice() {
+  const vcard = getExportCard();
+  if (!vcard.nome) {
+    showToast('Preencha pelo menos o nome');
+    return;
+  }
+  downloadVCF();
+}
+
 const sectionMeta = {
   dashboard: { title: 'Dashboard', desc: 'Os seus cartões guardados' },
   perfil: { title: 'Perfil', desc: 'Preencha os dados do seu cartão' },
@@ -136,6 +145,23 @@ function checkPublicView() {
     loadPublicCard(viewId);
     return true;
   }
+  
+  // Se não for view pública, esconde o loading e mostra login
+  setTimeout(() => {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+      loadingScreen.style.display = 'none';
+    }
+    
+    // Só chama estas funções se os elementos existirem
+    if (document.getElementById('f-name')) {
+      updatePreview();
+      pickColor('#4338ca');
+      pickTemplate('classic');
+    }
+    lucide.createIcons();
+  }, 100);
+  
   return false;
 }
 
@@ -143,14 +169,15 @@ async function loadPublicCard(cardId) {
   try {
     const { data, error } = await sb.from('vcards').select('*').eq('id', cardId).single();
     if (error || !data) {
+      document.getElementById('loading-screen').style.display = 'none';
       showToast('Cartão não encontrado');
       return;
     }
     viewingPublicCard = data;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'none';
     displayPublicCard(data);
+    document.getElementById('loading-screen').style.display = 'none';
   } catch (err) {
+    document.getElementById('loading-screen').style.display = 'none';
     showToast('Erro ao carregar cartão');
   }
 }
@@ -171,7 +198,7 @@ function displayPublicCard(card) {
   }
 
   const html = `
-    <div style="width:100%; min-height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
+    <div style="width:100%; min-height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; padding:16px 16px 80px 16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
       <div style="width:100%; max-width:480px; background:white; border-radius:24px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
         <!-- Banner opcional -->
         <div style="height:80px; background:${card.cover_image ? `url(${card.cover_image}) center/cover` : bannerBg};"></div>
@@ -190,23 +217,60 @@ function displayPublicCard(card) {
             ${card.empresa ? `<p style="font-size:13px; color:#6b7280; margin:3px 0 0; font-weight:500;">${escHtml(card.empresa)}</p>` : ''}
           </div>
           
+          <!-- Redes sociais (abaixo do nome e empresa) -->
+          ${getSocialLinksHTML(card, color)}
+          
           <!-- Contactos (alinhados à esquerda) -->
-          <div style="display:flex; flex-direction:column; gap:12px; align-items:flex-start;">
+          <div style="display:flex; flex-direction:column; gap:12px; align-items:flex-start; margin-top:20px;">
             ${card.telemovel ? `<a href="tel:${card.telemovel}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="phone" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span>${escHtml(card.telemovel)}</span></a>` : ''}
             ${card.email ? `<a href="mailto:${card.email}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="mail" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.email)}</span></a>` : ''}
             ${card.website ? `<a href="${escHtml(card.website)}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.website)}</span></a>` : ''}
             ${card.address ? `<div style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#374151; padding:8px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:${color}; flex-shrink:0; margin-top:2px;"></i><span style="word-break:break-word; line-height:1.4;">${escHtml(card.address)}</span></div>` : ''}
           </div>
           
-          <!-- Redes sociais -->
-          ${getSocialLinksHTML(card, color)}
+          ${card.about ? `<div style="margin-top:20px; padding-top:20px; border-top:1px solid #e5e7eb;"><p style="font-size:13px; color:#4b5563; line-height:1.6; margin:0;">${escHtml(card.about).replace(/\n/g, '<br>')}</p></div>` : ''}
         </div>
       </div>
+      
+      <!-- Botão flutuante Salvar Contacto -->
+      <button onclick="savePublicContact('${escHtml(JSON.stringify(card).replace(/'/g, '&#39;'))}');" style="position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:${color}; color:white; border:none; font-size:24px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.15); transition:all 0.2s; z-index:100;">
+        <i data-lucide="save" style="width:24px; height:24px;"></i>
+      </button>
+      <style>
+        button:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+      </style>
     </div>
   `;
   
   body.innerHTML = html;
   lucide.createIcons();
+}
+
+function savePublicContact(cardJson) {
+  try {
+    const card = JSON.parse(cardJson);
+    const parts = card.nome.split(' ');
+    const last = parts.length > 1 ? parts.pop() : '';
+    const first = parts.join(' ');
+    let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${card.nome}\n`;
+    if (card.cargo) vcf += `TITLE:${card.cargo}\n`;
+    if (card.empresa) vcf += `ORG:${card.empresa}\n`;
+    if (card.telemovel) vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
+    if (card.email) vcf += `EMAIL:${card.email}\n`;
+    if (card.website) vcf += `URL:${card.website}\n`;
+    if (card.address) vcf += `ADR;TYPE=WORK:;;${card.address};;;;\n`;
+    if (card.about) vcf += `NOTE:${card.about}\n`;
+    vcf += `END:VCARD`;
+
+    const blob = new Blob([vcf], { type: 'text/vcard' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (card.nome.replace(/\s+/g, '_') || 'contact') + '.vcf';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    console.error('Erro ao salvar contacto:', err);
+  }
 }
 
 function getSocialLinksHTML(card, color) {
@@ -494,6 +558,7 @@ async function saveCard() {
       nome: nome,
       cargo: document.getElementById('f-role').value || '',
       empresa: document.getElementById('f-company').value || '',
+      about: document.getElementById('f-about').value || '',
       telemovel: document.getElementById('f-phone').value || '',
       email: document.getElementById('f-email').value || '',
       website: document.getElementById('f-website').value || '',
@@ -535,7 +600,7 @@ async function saveCard() {
 }
 
 function clearForm() {
-  ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter', 'f-cover', 'f-avatar'].forEach(id => {
+  ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-about', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter', 'f-cover', 'f-avatar'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -633,6 +698,7 @@ function editCard(id) {
   document.getElementById('f-name').value = card.nome || '';
   document.getElementById('f-role').value = card.cargo || '';
   document.getElementById('f-company').value = card.empresa || '';
+  document.getElementById('f-about').value = card.about || '';
   document.getElementById('f-phone').value = card.telemovel || '';
   document.getElementById('f-email').value = card.email || '';
   document.getElementById('f-website').value = card.website || '';
@@ -759,6 +825,7 @@ function getExportCard() {
     email: document.getElementById('f-email').value || '',
     website: document.getElementById('f-website').value || '',
     address: document.getElementById('f-address').value || '',
+    about: document.getElementById('f-about').value || '',
     instagram: document.getElementById('f-instagram').value || '',
     facebook: document.getElementById('f-facebook').value || '',
     linkedin: document.getElementById('f-linkedin').value || '',
@@ -919,58 +986,18 @@ async function adminDeleteCard(card) {
 
 (async () => {
   await initSupabase();
-  
-  // Verifica link público ANTES de fazer qualquer coisa
-  const isPublicView = checkPublicView();
-  
-  if (!isPublicView) {
-    // Se não for view pública, mostra a tela de login
-    updatePreview();
-    pickColor('#4338ca');
-    pickTemplate('classic');
-    lucide.createIcons();
-
-    document.getElementById('f-cover').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        coverImageData = file;
-        const img = document.getElementById('preview-cover-img');
-        img.src = event.target.result;
-        img.style.display = 'block';
-        document.getElementById('preview-banner').style.background = 'none';
-        updatePreview();
-      };
-      reader.readAsDataURL(file);
-    });
-
-    document.getElementById('f-avatar').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        avatarImageData = file;
-        const img = document.getElementById('preview-avatar-img');
-        img.src = event.target.result;
-        img.style.display = 'block';
-        document.getElementById('preview-avatar').style.display = 'none';
-        updatePreview();
-      };
-      reader.readAsDataURL(file);
-    });
-
-    ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.addEventListener('input', updatePreview);
-    });
-  }
+  checkPublicView();
 })();
   </script>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body class="h-full bg-gray-50 overflow-hidden">
-  <!-- LOGIN SCREEN -->
+ <body class="h-full bg-gray-50 overflow-hidden"><!-- LOADING SCREEN -->
+  <div id="loading-screen" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black z-50">
+   <div class="text-center">
+    <div class="w-12 h-12 rounded-full border-4 border-gray-600 border-t-white animate-spin mx-auto mb-4"></div>
+    <p class="text-white text-sm font-medium">A carregar cartão...</p>
+   </div>
+  </div><!-- LOGIN SCREEN -->
   <div id="login-screen" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black">
    <div class="w-full max-w-md">
     <div class="bg-white rounded-2xl shadow-2xl p-8">
@@ -979,28 +1006,23 @@ async function adminDeleteCard(card) {
       <p class="text-gray-500 text-sm mt-2">Crie cartões digitais profissionais</p>
      </div>
      <div class="space-y-4">
-      <div>
-       <label class="block text-xs font-medium text-gray-600 mb-1">Email</label> <input id="login-email" type="email" placeholder="seu@email.com" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Email</label> <input id="login-email" type="email" placeholder="seu@email.com" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
       </div>
-      <div>
-       <label class="block text-xs font-medium text-gray-600 mb-1">Senha</label> <input id="login-password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Senha</label> <input id="login-password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
       </div><button onclick="doLogin(event)" class="w-full py-2.5 rounded-lg text-white font-medium text-sm transition" style="background: #1a6b4a;">Entrar</button>
      </div>
      <div id="login-error" class="text-xs text-red-600 text-center mt-4 hidden"></div>
     </div>
    </div>
   </div><!-- APP -->
-  <div id="app" style="display:none" class="h-full w-full flex">
-   <!-- SIDEBAR -->
+  <div id="app" style="display:none" class="h-full w-full flex"><!-- SIDEBAR -->
    <aside id="sidebar" class="w-60 flex-shrink-0 flex flex-col" style="background: linear-gradient(180deg, #312e81 0%, #4338ca 100%);">
     <div class="p-5 pb-3">
      <h1 class="text-white text-xl font-bold" style="font-family: 'Playfair Display', serif;">VCard Creator</h1>
      <p class="text-indigo-300 text-xs mt-1">Cartões digitais profissionais</p>
     </div>
-    <nav class="flex-1 px-3 py-2 space-y-1">
-     <button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
-     <div id="admin-section" style="display:none;" class="border-t border-indigo-600 mt-2 pt-2">
-      <button onclick="navTo('admin')" data-nav="admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="shield" class="w-4 h-4"></i> Administração </button>
+    <nav class="flex-1 px-3 py-2 space-y-1"><button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
+     <div id="admin-section" style="display:none;" class="border-t border-indigo-600 mt-2 pt-2"><button onclick="navTo('admin')" data-nav="admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="shield" class="w-4 h-4"></i> Administração </button>
      </div>
     </nav>
     <div class="p-4 border-t border-indigo-600">
@@ -1009,23 +1031,19 @@ async function adminDeleteCard(card) {
      </div><button onclick="doLogout()" class="w-full mt-3 px-3 py-2 rounded-lg text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 transition flex items-center justify-center gap-2"> <i data-lucide="log-out" class="w-4 h-4"></i> Sair </button>
     </div>
    </aside>
-   <div class="flex-1 flex flex-col h-full overflow-hidden">
-    <!-- TOPBAR -->
+   <div class="flex-1 flex flex-col h-full overflow-hidden"><!-- TOPBAR -->
     <header class="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 flex-shrink-0">
      <div>
       <h2 id="section-title" class="text-lg font-semibold text-gray-800">Dashboard</h2>
       <p id="section-desc" class="text-xs text-gray-400">Os seus cartões guardados</p>
      </div>
-     <div class="flex items-center gap-2">
-      <button id="save-btn" onclick="saveCard()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium" style="background: #4338ca; display:none;"> <i data-lucide="save" class="w-4 h-4"></i> Guardar </button>
+     <div class="flex items-center gap-2"><button id="save-btn" onclick="saveCard()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium" style="background: #4338ca; display:none;"> <i data-lucide="save" class="w-4 h-4"></i> Guardar </button>
      </div>
     </header><!-- CONTENT AREA -->
-    <div class="flex-1 overflow-auto p-6">
-     <!-- DASHBOARD -->
+    <div class="flex-1 overflow-auto p-6"><!-- DASHBOARD -->
      <section id="sec-dashboard" class="fade-in">
       <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-      <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-gray-400">
-       <i data-lucide="credit-card" class="w-16 h-16 mb-4 opacity-30"></i>
+      <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-gray-400"><i data-lucide="credit-card" class="w-16 h-16 mb-4 opacity-30"></i>
        <p class="text-lg font-medium">Nenhum cartão criado</p>
        <p class="text-sm mt-1">Comece a criar o seu primeiro cartão digital</p>
       </div>
@@ -1035,35 +1053,30 @@ async function adminDeleteCard(card) {
        <div class="space-y-4">
         <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
          <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Fotos</h4>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-cover">Foto de Capa</label> <input id="f-cover" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
+         <div><label class="block text-xs font-medium text-gray-500 mb-2" for="f-cover">Foto de Capa</label> <input id="f-cover" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
           <p class="text-xs text-gray-400 mt-1">Recomendado: 800x300px</p>
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
+         <div><label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
           <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p>
          </div>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
          <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Informações Pessoais</h4>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
+         </div>
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-about">Sobre</label> <textarea id="f-about" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none" rows="3" placeholder="Descreva você ou a sua empresa..."></textarea>
          </div>
         </div>
        </div><!-- LIVE PREVIEW -->
        <div>
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Pré-visualização</h4>
         <div id="preview-card" class="bg-white rounded-2xl border border-gray-200 shadow-sm" style="overflow:visible;">
-         <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;">
-          <img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
-          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow-hidden z-10" style="color:#4338ca;">
-           <img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+         <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;"><img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow-hidden z-10" style="color:#4338ca;"><img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
            <div id="preview-avatar">
             J
            </div>
@@ -1074,17 +1087,13 @@ async function adminDeleteCard(card) {
           <p id="preview-role" class="text-sm text-gray-500">Designer Gráfico</p>
           <p id="preview-company" class="text-xs text-gray-400 mt-0.5">Estúdio Criativo</p>
           <div class="mt-4 space-y-2">
-           <div id="preview-phone-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="phone" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-phone"></span>
+           <div id="preview-phone-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="phone" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-phone"></span>
            </div>
-           <div id="preview-email-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="mail" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-email"></span>
+           <div id="preview-email-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="mail" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-email"></span>
            </div>
-           <div id="preview-web-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="globe" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-web"></span>
+           <div id="preview-web-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="globe" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-web"></span>
            </div>
-           <div id="preview-addr-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-addr"></span>
+           <div id="preview-addr-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-addr"></span>
            </div>
           </div>
           <div id="preview-socials" class="flex gap-2 mt-3 flex-wrap"></div>
@@ -1097,41 +1106,30 @@ async function adminDeleteCard(card) {
       <div class="max-w-lg space-y-4">
        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados de Contacto</h4>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telefone</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 912 345 678">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telefone</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 912 345 678">
         </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="joao@email.com">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="joao@email.com">
         </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
         </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
         </div>
         <div class="pt-3 border-t border-gray-200">
          <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Redes Sociais</h5>
          <div class="space-y-3">
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
           </div>
          </div>
         </div>
@@ -1142,11 +1140,9 @@ async function adminDeleteCard(card) {
       <div class="max-w-2xl space-y-6">
        <div class="bg-white rounded-xl p-5 border border-gray-200">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Cor de Destaque</h4>
-        <div class="flex flex-wrap gap-3">
-         <button onclick="pickColor('#4338ca')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#4338ca;" data-color="#4338ca"></button> <button onclick="pickColor('#0891b2')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#0891b2;" data-color="#0891b2"></button> <button onclick="pickColor('#059669')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#059669;" data-color="#059669"></button> <button onclick="pickColor('#d97706')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#d97706;" data-color="#d97706"></button> <button onclick="pickColor('#dc2626')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#dc2626;" data-color="#dc2626"></button> <button onclick="pickColor('#7c3aed')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#7c3aed;" data-color="#7c3aed"></button> <button onclick="pickColor('#be185d')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#be185d;" data-color="#be185d"></button> <button onclick="pickColor('#1e293b')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#1e293b;" data-color="#1e293b"></button>
+        <div class="flex flex-wrap gap-3"><button onclick="pickColor('#4338ca')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#4338ca;" data-color="#4338ca"></button> <button onclick="pickColor('#0891b2')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#0891b2;" data-color="#0891b2"></button> <button onclick="pickColor('#059669')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#059669;" data-color="#059669"></button> <button onclick="pickColor('#d97706')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#d97706;" data-color="#d97706"></button> <button onclick="pickColor('#dc2626')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#dc2626;" data-color="#dc2626"></button> <button onclick="pickColor('#7c3aed')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#7c3aed;" data-color="#7c3aed"></button> <button onclick="pickColor('#be185d')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#be185d;" data-color="#be185d"></button> <button onclick="pickColor('#1e293b')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#1e293b;" data-color="#1e293b"></button>
         </div>
-        <div class="mt-4 flex items-center gap-3">
-         <label class="text-xs text-gray-500">Cor personalizada:</label> <input type="color" id="custom-color" value="#4338ca" onchange="pickColor(this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+        <div class="mt-4 flex items-center gap-3"><label class="text-xs text-gray-500">Cor personalizada:</label> <input type="color" id="custom-color" value="#4338ca" onchange="pickColor(this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
         </div>
        </div>
        <div class="bg-white rounded-xl p-5 border border-gray-200">
@@ -1171,14 +1167,11 @@ async function adminDeleteCard(card) {
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Partilhar Cartão</h4>
         <p class="text-sm text-gray-500 mb-4">Selecione um cartão para gerar um link público e QR Code</p><select id="share-select" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm mb-3"> <option value="">-- Escolha um cartão --</option> </select>
         <div id="share-container" class="hidden space-y-4">
-         <div>
-          <label class="text-xs font-medium text-gray-600">Link Público:</label>
-          <div class="flex gap-2 mt-1">
-           <input id="share-link" type="text" readonly class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50"> <button onclick="copyLink()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Copiar</button>
+         <div><label class="text-xs font-medium text-gray-600">Link Público:</label>
+          <div class="flex gap-2 mt-1"><input id="share-link" type="text" readonly class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50"> <button onclick="copyLink()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Copiar</button>
           </div>
          </div>
-         <div>
-          <label class="text-xs font-medium text-gray-600 mb-2 block">QR Code:</label>
+         <div><label class="text-xs font-medium text-gray-600 mb-2 block">QR Code:</label>
           <div id="share-qr" class="flex justify-center p-4 bg-gray-50 rounded-lg"></div>
          </div>
         </div>
@@ -1190,11 +1183,9 @@ async function adminDeleteCard(card) {
        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Exportar Cartão</h4>
         <p class="text-sm text-gray-500">Escolha o formato de exportação para o cartão.</p>
-        <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden">
-         <i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.
+        <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden"><i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.
         </div>
-        <div id="export-actions" class="flex gap-3">
-         <button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF </button> <button onclick="downloadQR()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="qr-code" class="w-5 h-5"></i> QR Code </button>
+        <div id="export-actions" class="flex gap-3"><button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF </button> <button onclick="downloadQR()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="qr-code" class="w-5 h-5"></i> QR Code </button>
         </div>
        </div>
        <div id="qr-container" class="bg-white rounded-xl p-5 border border-gray-200 hidden">
@@ -1235,18 +1226,16 @@ async function adminDeleteCard(card) {
    <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
     <h4 class="font-semibold text-gray-800 mb-2">Eliminar cartão?</h4>
     <p class="text-sm text-gray-500 mb-4">Esta ação não pode ser desfeita.</p>
-    <div class="flex gap-3 justify-end">
-     <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button> <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
+    <div class="flex gap-3 justify-end"><button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button> <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
     </div>
    </div>
   </div><!-- TOAST -->
   <div id="toast" class="fixed top-4 right-4 z-50 hidden">
-   <div class="toast-msg flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white" style="background:#4338ca;">
-    <i data-lucide="check-circle" class="w-4 h-4"></i> <span id="toast-text"></span>
+   <div class="toast-msg flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white" style="background:#4338ca;"><i data-lucide="check-circle" class="w-4 h-4"></i> <span id="toast-text"></span>
    </div>
   </div>
   <script>
-['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter'].forEach(id => {
+['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-about', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updatePreview);
 });
@@ -1280,17 +1269,6 @@ document.getElementById('f-avatar').addEventListener('change', function(e) {
   };
   reader.readAsDataURL(file);
 });
-
-(async () => {
-  await initSupabase();
-  
-  if (!checkPublicView()) {
-    updatePreview();
-    pickColor('#4338ca');
-    pickTemplate('classic');
-    lucide.createIcons();
-  }
-})();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e55cc26de77e3',t:'MTc3NzI5ODIzNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e6891c4bc77e3',t:'MTc3NzI5OTAwMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
