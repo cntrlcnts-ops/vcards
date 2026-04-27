@@ -196,14 +196,9 @@
    </div>
   </div>
   <script>
-// ── CREDENCIAIS SEGURAS - NÃO EXPOSTAS NO CÓDIGO ──
-// As credenciais devem ser geridas através de variáveis de ambiente do servidor
-// Exemplo para Node.js/Express:
-// const SUPABASE_URL = process.env.SUPABASE_URL;
-// const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
-// Retornadas através de um endpoint seguro (ver comentário abaixo)
-
-// Fetch de credenciais de um endpoint seguro no backend
+// ── CREDENCIAIS DO SUPABASE (CHAVE ANÓNIMA) ──
+// A chave anónima é SEGURA de expor (é pública)
+// Acesso é controlado por políticas RLS no Supabase
 let sb = null;
 let currentUser = null;
 let allCards = [];
@@ -220,17 +215,17 @@ const sectionMeta = {
   export: { title: 'Exportar', desc: 'Exporte o seu cartão digital' }
 };
 
-// Inicializar Supabase com credenciais anónimas (públicas)
+// Inicializar Supabase
 async function initSupabase() {
-  // MÉTODO SEGURO: Utilizar a chave anónima de Supabase (é public e segura)
-  // As chaves anónimas têm permissões limitadas definidas nas políticas RLS do Supabase
   const SUPABASE_URL = 'https://tgobchnkeewoonnsesqv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs';
-  
-  // Nota: Esta é a chave ANÓNIMA que é segura de expor
-  // A chave de serviço (service_role_key) NUNCA deve estar no frontend
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
+
+// Configurar domínio autorizado no Supabase
+// Aceda a: https://supabase.com/dashboard
+// Vá a: Settings → Authentication → Authorized redirect URLs
+// Adicione: https://cntrlcnts-ops.github.io/vcards/
 
 // ── LOGIN / AUTH ──
 async function doLogin(e) {
@@ -693,5 +688,5 @@ function showToast(msg) {
   lucide.createIcons();
 })();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2da492263e77e3',t:'MTc3NzI5MDk3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2dacbea1e177e3',t:'MTc3NzI5MTMxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
