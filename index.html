@@ -201,7 +201,7 @@ function displayPublicCard(card) {
   }
 
   const html = `
-    <div style="width:100%; min-height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; padding:16px 16px 80px 16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
+    <div style="width:100%; min-height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; padding:40px 16px 80px 16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
       <div style="width:100%; max-width:480px; background:white; border-radius:24px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
         <!-- Banner opcional -->
         <div style="height:80px; background:${card.cover_image ? `url(${card.cover_image}) center/cover` : bannerBg};"></div>
@@ -228,7 +228,7 @@ function displayPublicCard(card) {
             ${card.telemovel ? `<a href="tel:${card.telemovel}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="phone" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span>${escHtml(card.telemovel)}</span></a>` : ''}
             ${card.email ? `<a href="mailto:${card.email}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="mail" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.email)}</span></a>` : ''}
             ${card.website ? `<a href="${escHtml(card.website)}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.website)}</span></a>` : ''}
-            ${card.address ? `<div style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#374151; padding:8px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:${color}; flex-shrink:0; margin-top:2px;"></i><span style="word-break:break-word; line-height:1.5; white-space:pre-wrap;">${escHtml(card.address)}</span></div>` : ''}
+            ${card.address ? `<div style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#374151; padding:8px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:${color}; flex-shrink:0; margin-top:2px;"></i><span style="word-break:break-word; line-height:1.5; white-space:normal; overflow-wrap:break-word;">${escHtml(card.address)}</span></div>` : ''}
           </div>
           
           ${card.about ? `<div style="margin-top:20px; padding-top:20px; border-top:1px solid #e5e7eb;"><p style="font-size:13px; color:#4b5563; line-height:1.6; margin:0;">${escHtml(card.about).replace(/\n/g, '<br>')}</p></div>` : ''}
@@ -987,11 +987,10 @@ async function adminDeleteCard(card) {
   };
 }
 
-// Inicializa Supabase primeiro
-initSupabase();
-
-// Espera o DOM estar pronto antes de fazer verificações
-document.addEventListener('DOMContentLoaded', function() {
+// Espera o DOM estar pronto e inicializa corretamente
+document.addEventListener('DOMContentLoaded', async function() {
+  await initSupabase();
+  
   const params = new URLSearchParams(window.location.search);
   if (params.get('view')) {
     // É um link público - mostra loading e carrega
@@ -1293,5 +1292,5 @@ document.getElementById('f-avatar').addEventListener('change', function(e) {
   reader.readAsDataURL(file);
 });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e8882611377e3',t:'MTc3NzMwMDMxMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e99c7d11977e3',t:'MTc3NzMwMTAxOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
