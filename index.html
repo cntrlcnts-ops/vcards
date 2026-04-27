@@ -174,28 +174,28 @@ function displayPublicCard(card) {
     <div style="width:100%; min-height:100%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
       <div style="width:100%; max-width:480px; background:white; border-radius:24px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
         <!-- Banner opcional -->
-        <div style="height:80px; background:${card.cover_image ? 'url(' + card.cover_image + ') center/cover' : bannerBg};"></div>
+        <div style="height:80px; background:${card.cover_image ? `url(${card.cover_image}) center/cover` : bannerBg};"></div>
         
-        <!-- Conteúdo centralizado -->
-        <div style="padding:40px 24px 32px 24px; text-align:center;">
-          <!-- Avatar grande centralizado -->
-          <div style="width:120px; height:120px; border-radius:50%; background:white; border:4px solid ${color}; display:flex; align-items:center; justify-content:center; font-size:48px; font-weight:bold; color:${color}; overflow:hidden; margin:0 auto -20px; position:relative; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-            ${card.avatar_image ? '<img src="' + card.avatar_image + '" style="width:100%; height:100%; object-fit:cover;">' : (card.nome ? card.nome.charAt(0).toUpperCase() : 'C')}
+        <!-- Conteúdo alinhado à esquerda -->
+        <div style="padding:40px 24px 32px 24px; text-align:left;">
+          <!-- Avatar grande à esquerda -->
+          <div style="width:100px; height:100px; border-radius:50%; background:white; border:4px solid ${color}; display:flex; align-items:center; justify-content:center; font-size:40px; font-weight:bold; color:${color}; overflow:hidden; margin:-50px 0 16px 0; position:relative; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+            ${card.avatar_image ? `<img src="${card.avatar_image}" style="width:100%; height:100%; object-fit:cover;">` : (card.nome ? card.nome.charAt(0).toUpperCase() : 'C')}
           </div>
           
           <!-- Informações principais -->
-          <div style="margin-top:28px;">
-            <h1 style="font-size:28px; font-weight:700; margin:0; color:#1f2937; line-height:1.2;">${escHtml(card.nome || 'Sem nome')}</h1>
-            ${card.cargo ? '<p style="font-size:16px; color:' + color + '; margin:8px 0 0; font-weight:600;">${escHtml(card.cargo)}</p>' : ''}
-            ${card.empresa ? '<p style="font-size:13px; color:#6b7280; margin:4px 0 0; font-weight:500;">${escHtml(card.empresa)}</p>' : ''}
+          <div>
+            <h1 style="font-size:26px; font-weight:700; margin:0; color:#1f2937; line-height:1.2;">${escHtml(card.nome || 'Sem nome')}</h1>
+            ${card.cargo ? `<p style="font-size:15px; color:${color}; margin:6px 0 0; font-weight:600;">${escHtml(card.cargo)}</p>` : ''}
+            ${card.empresa ? `<p style="font-size:13px; color:#6b7280; margin:3px 0 0; font-weight:500;">${escHtml(card.empresa)}</p>` : ''}
           </div>
           
           <!-- Contactos -->
-          <div style="margin:28px 0 0; display:flex; flex-direction:column; gap:12px; align-items:center;">
-            ${card.telemovel ? '<a href="tel:${card.telemovel}" style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:10px 0; border-radius:8px; transition:all 0.2s;"><i data-lucide="phone" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.telemovel) + '</span></a>' : ''}
-            ${card.email ? '<a href="mailto:${card.email}" style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:10px 0; border-radius:8px; transition:all 0.2s;"><i data-lucide="mail" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.email) + '</span></a>' : ''}
-            ${card.website ? '<a href="' + escHtml(card.website) + '" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:10px 0; border-radius:8px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.website) + '</span></a>' : ''}
-            ${card.address ? '<div style="display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; color:#374151; padding:10px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:' + color + ';"></i><span>' + escHtml(card.address) + '</span></div>' : ''}
+          <div style="margin:24px 0 0; display:flex; flex-direction:column; gap:12px; align-items:flex-start;">
+            ${card.telemovel ? `<a href="tel:${card.telemovel}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="phone" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span>${escHtml(card.telemovel)}</span></a>` : ''}
+            ${card.email ? `<a href="mailto:${card.email}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="mail" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.email)}</span></a>` : ''}
+            ${card.website ? `<a href="${escHtml(card.website)}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:8px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.website)}</span></a>` : ''}
+            ${card.address ? `<div style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#374151; padding:8px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:${color}; flex-shrink:0; margin-top:2px;"></i><span style="word-break:break-word; line-height:1.4;">${escHtml(card.address)}</span></div>` : ''}
           </div>
           
           <!-- Redes sociais -->
@@ -1251,5 +1251,5 @@ document.getElementById('f-avatar').addEventListener('change', function(e) {
   }
 })();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e4822276a77e3',t:'MTc3NzI5NzY3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e531297b577e3',t:'MTc3NzI5ODEyMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
