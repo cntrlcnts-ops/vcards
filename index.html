@@ -131,9 +131,6 @@
     </div>
     <nav class="flex-1 px-3 py-2 space-y-1">
      <button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
-     <div id="admin-section" style="display:none;" class="border-t border-indigo-600 mt-2 pt-2">
-      <button onclick="navTo('admin')" data-nav="admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="shield" class="w-4 h-4"></i> Administração </button>
-     </div>
     </nav>
     <div class="p-4 border-t border-indigo-600">
      <div class="text-indigo-300 text-xs">
@@ -335,30 +332,6 @@
         <p class="text-xs text-gray-400 text-center mt-2">Clique com o botão direito para guardar a imagem</p>
        </div>
       </div>
-     </section><!-- ADMIN -->
-     <section id="sec-admin" style="display:none;">
-      <div class="max-w-4xl space-y-4">
-       <div class="bg-white rounded-xl p-5 border border-gray-200">
-        <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Painel de Administração</h4>
-        <p class="text-sm text-gray-500 mb-4">Gerencie todos os cartões do sistema</p>
-        <div id="admin-stats" class="grid grid-cols-3 gap-4 mb-6">
-         <div class="bg-indigo-50 rounded-lg p-4">
-          <p class="text-xs text-indigo-600 uppercase font-semibold">Total de Utilizadores</p>
-          <p id="admin-users-count" class="text-2xl font-bold text-indigo-900 mt-1">0</p>
-         </div>
-         <div class="bg-green-50 rounded-lg p-4">
-          <p class="text-xs text-green-600 uppercase font-semibold">Total de Cartões</p>
-          <p id="admin-cards-count" class="text-2xl font-bold text-green-900 mt-1">0</p>
-         </div>
-         <div class="bg-blue-50 rounded-lg p-4">
-          <p class="text-xs text-blue-600 uppercase font-semibold">Cartões Hoje</p>
-          <p id="admin-today-count" class="text-2xl font-bold text-blue-900 mt-1">0</p>
-         </div>
-        </div>
-        <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Todos os Cartões</h5>
-        <div id="admin-cards-list" class="space-y-2 max-h-96 overflow-y-auto"></div>
-       </div>
-      </div>
      </section>
     </div>
    </div>
@@ -388,7 +361,6 @@ let currentTemplate = 'classic';
 let deleteTarget = null;
 let coverImageData = null;
 let avatarImageData = null;
-const ADMIN_EMAILS = ['admin@vcard.ao'];
 
 const sectionMeta = {
   dashboard: { title: 'Dashboard', desc: 'Os seus cartões guardados' },
@@ -396,8 +368,7 @@ const sectionMeta = {
   contactos: { title: 'Contactos', desc: 'Adicione os seus dados de contacto' },
   design: { title: 'Design', desc: 'Personalize a aparência do cartão' },
   share: { title: 'Partilhar', desc: 'Crie links e QR Codes públicos' },
-  export: { title: 'Exportar', desc: 'Exporte o seu cartão digital' },
-  admin: { title: 'Administração', desc: 'Gerencie todos os cartões do sistema' }
+  export: { title: 'Exportar', desc: 'Exporte o seu cartão digital' }
 };
 
 async function initSupabase() {
@@ -440,14 +411,6 @@ async function doLogin(e) {
     currentUser = data.user;
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    
-    // Mostra/esconde secção de admin
-    if (ADMIN_EMAILS.includes(currentUser.email)) {
-      document.getElementById('admin-section').style.display = 'block';
-    } else {
-      document.getElementById('admin-section').style.display = 'none';
-    }
-    
     loadUserCards();
     lucide.createIcons();
   } catch (err) {
@@ -498,11 +461,11 @@ function navTo(sec) {
   if (sec === 'dashboard') renderDashboard();
   if (sec === 'share') populateShareSelect();
   if (sec === 'export') checkExportReady();
-  if (sec === 'admin') loadAdminPanel();
 
   // Mostra/esconde botão guardar
   const editSections = ['perfil', 'contactos', 'design', 'export'];
   document.getElementById('save-btn').style.display = editSections.includes(sec) ? 'flex' : 'none';
+}
 
 document.getElementById('f-cover').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -1048,96 +1011,6 @@ function showToast(msg) {
   setTimeout(() => t.classList.add('hidden'), 3000);
 }
 
-async function loadAdminPanel() {
-  if (!currentUser || !ADMIN_EMAILS.includes(currentUser.email)) {
-    showToast('Sem permissões de administrador');
-    return;
-  }
-
-  try {
-    const { data: allCards, error } = await sb.from('vcards').select('*').order('created_at', { ascending: false });
-    if (error) throw error;
-
-    const uniqueUsers = new Set(allCards.map(c => c.created_by)).size;
-    const todayCards = allCards.filter(c => {
-      const createdDate = new Date(c.created_at).toDateString();
-      const today = new Date().toDateString();
-      return createdDate === today;
-    }).length;
-
-    document.getElementById('admin-users-count').textContent = uniqueUsers;
-    document.getElementById('admin-cards-count').textContent = allCards.length;
-    document.getElementById('admin-today-count').textContent = todayCards;
-
-    const list = document.getElementById('admin-cards-list');
-    list.innerHTML = '';
-
-    allCards.forEach(card => {
-      const row = document.createElement('div');
-      row.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition';
-      
-      const info = document.createElement('div');
-      info.className = 'flex-1';
-      info.innerHTML = `
-        <p class="text-sm font-medium text-gray-800">${escHtml(card.nome || 'Sem nome')}</p>
-        <p class="text-xs text-gray-500">${card.cargo ? escHtml(card.cargo) + ' · ' : ''}${card.empresa ? escHtml(card.empresa) : ''}</p>
-        <p class="text-xs text-gray-400 mt-1">Criado: ${new Date(card.created_at).toLocaleString('pt-PT')}</p>
-      `;
-      row.appendChild(info);
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'px-3 py-1.5 rounded text-sm text-white bg-red-500 hover:bg-red-600 transition';
-      deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4 inline"></i>';
-      deleteBtn.onclick = () => adminDeleteCard(card);
-      row.appendChild(deleteBtn);
-
-      list.appendChild(row);
-    });
-
-    lucide.createIcons();
-  } catch (err) {
-    console.error('Erro ao carregar painel admin:', err);
-    showToast('Erro ao carregar dados');
-  }
-}
-
-async function adminDeleteCard(card) {
-  const confirmMsg = `Eliminar cartão de ${card.nome}?`;
-  const userConfirm = document.createElement('div');
-  userConfirm.className = 'fixed inset-0 z-50 flex items-center justify-center';
-  userConfirm.style.background = 'rgba(0,0,0,0.4)';
-  userConfirm.innerHTML = `
-    <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
-      <h4 class="font-semibold text-gray-800 mb-2">Confirmar eliminação?</h4>
-      <p class="text-sm text-gray-500 mb-4">${confirmMsg}</p>
-      <div class="flex gap-3 justify-end">
-        <button onclick="this.parentElement.parentElement.remove()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button>
-        <button id="confirm-admin-delete" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(userConfirm);
-
-  document.getElementById('confirm-admin-delete').onclick = async () => {
-    const btn = document.getElementById('confirm-admin-delete');
-    btn.disabled = true;
-    btn.textContent = 'A eliminar...';
-
-    try {
-      const { error } = await sb.from('vcards').delete().eq('id', card.id);
-      if (error) throw error;
-      showToast('Cartão eliminado!');
-      userConfirm.remove();
-      await loadAdminPanel();
-    } catch (err) {
-      console.error('Erro ao eliminar:', err);
-      showToast('Erro ao eliminar cartão');
-      btn.disabled = false;
-      btn.textContent = 'Eliminar';
-    }
-  };
-}
-
 ['f-name', 'f-role', 'f-company', 'f-phone', 'f-email', 'f-website', 'f-address', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updatePreview);
@@ -1151,5 +1024,5 @@ async function adminDeleteCard(card) {
   lucide.createIcons();
 })();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2e241c714377e3',t:'MTc3NzI5NjE5OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f2dff2ec14777e3',t:'MTc3NzI5NDY4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
