@@ -808,12 +808,13 @@ function editCard(id) {
   coverImageData = card.cover_url || null;
   avatarImageData = card.avatar_url || null;
   
-  if (coverImageData) {
-    document.getElementById('preview-cover-img').src = coverImageData;
+  if (card.cover_url) {
+    document.getElementById('preview-cover-img').src = card.cover_url;
     document.getElementById('preview-cover-img').style.display = 'block';
+    document.getElementById('preview-banner').style.background = 'none';
   }
-  if (avatarImageData) {
-    document.getElementById('preview-avatar-img').src = avatarImageData;
+  if (card.avatar_url) {
+    document.getElementById('preview-avatar-img').src = card.avatar_url;
     document.getElementById('preview-avatar-img').style.display = 'block';
     document.getElementById('preview-avatar').style.display = 'none';
   }
@@ -981,11 +982,13 @@ function getExportCard() {
 }
 
 function getFirstPhone() {
-  return document.getElementById('f-phone').value || '';
+  const val = document.getElementById('f-phone')?.value || '';
+  return val.trim();
 }
 
 function getFirstEmail() {
-  return document.getElementById('f-email').value || '';
+  const val = document.getElementById('f-email')?.value || '';
+  return val.trim();
 }
 
 function downloadVCF() {
@@ -1716,74 +1719,12 @@ function closeAvatarEditor() {
   document.onmouseup = null;
 }
 
-function addPhoneField(value = '') {
-  const id = 'phone-' + Date.now() + Math.random();
-  phoneFields.push(id);
-  const container = document.getElementById('phones-container');
-  const div = document.createElement('div');
-  div.className = 'flex gap-2';
-  div.innerHTML = `
-    <input type="text" id="${id}" class="field-input flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" value="${escHtml(value)}" oninput="updatePreview()">
-    <button type="button" onclick="removePhoneField('${id}')" class="px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition">
-      <i data-lucide="trash-2" class="w-4 h-4"></i>
-    </button>
-  `;
-  container.appendChild(div);
-  lucide.createIcons();
-}
-
-function removePhoneField(id) {
-  const idx = phoneFields.indexOf(id);
-  if (idx > -1) phoneFields.splice(idx, 1);
-  const el = document.getElementById(id);
-  if (el) el.parentElement.remove();
-  updatePreview();
-}
-
-function getAllPhones() {
-  return phoneFields
-    .map(id => document.getElementById(id)?.value || '')
-    .filter(v => v.trim());
-}
-
 function getFirstPhone() {
-  const phones = getAllPhones();
-  return phones.length > 0 ? phones[0] : '';
-}
-
-function addEmailField(value = '') {
-  const id = 'email-' + Date.now() + Math.random();
-  emailFields.push(id);
-  const container = document.getElementById('emails-container');
-  const div = document.createElement('div');
-  div.className = 'flex gap-2';
-  div.innerHTML = `
-    <input type="email" id="${id}" class="field-input flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" value="${escHtml(value)}" oninput="updatePreview()">
-    <button type="button" onclick="removeEmailField('${id}')" class="px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition">
-      <i data-lucide="trash-2" class="w-4 h-4"></i>
-    </button>
-  `;
-  container.appendChild(div);
-  lucide.createIcons();
-}
-
-function removeEmailField(id) {
-  const idx = emailFields.indexOf(id);
-  if (idx > -1) emailFields.splice(idx, 1);
-  const el = document.getElementById(id);
-  if (el) el.parentElement.remove();
-  updatePreview();
-}
-
-function getAllEmails() {
-  return emailFields
-    .map(id => document.getElementById(id)?.value || '')
-    .filter(v => v.trim());
+  return document.getElementById('f-phone').value || '';
 }
 
 function getFirstEmail() {
-  const emails = getAllEmails();
-  return emails.length > 0 ? emails[0] : '';
+  return document.getElementById('f-email').value || '';
 }
 
 function adminDownloadCard(card) {
@@ -1805,5 +1746,5 @@ function adminDownloadCard(card) {
   showToast('Cartão descarregado!');
 }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f361761b6cc77dd',t:'MTc3NzM3OTU2NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f361f3d478777dd',t:'MTc3NzM3OTg4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
