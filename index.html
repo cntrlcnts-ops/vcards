@@ -270,8 +270,8 @@ function displayPublicCard(card) {
           <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-start; margin-top:16px;">
             ${card.telemovel ? `<a href="tel:${card.telemovel}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:6px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="phone" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span>${escHtml(card.telemovel)}</span></a>` : ''}
             ${card.email ? `<a href="mailto:${card.email}" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:6px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="mail" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.email)}</span></a>` : ''}
-            ${card.website ? `<a href="${escHtml(card.website)}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:6px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.website)}</span></a>` : ''}
-            ${card.address ? `<div style="display:flex; align-items:flex-start; gap:10px; font-size:13px; color:#374151; padding:6px 0;"><i data-lucide="map-pin" style="width:16px; height:16px; color:${color}; flex-shrink:0; margin-top:2px;"></i><span style="word-break:break-word; line-height:1.5; white-space:normal; overflow-wrap:break-word;">${escHtml(card.address)}</span></div>` : ''}
+            ${card.website ? `<a href="${formatWebsiteUrl(card.website)}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:6px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="globe" style="width:16px; height:16px; color:${color}; flex-shrink:0;"></i><span style="word-break:break-all;">${escHtml(card.website)}</span></a>` : ''}
+            ${card.address ? `<a href="https://www.google.com/maps/search/${encodeURIComponent(card.address)}" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; gap:10px; font-size:14px; color:#374151; text-decoration:none; padding:6px 0; border-radius:6px; transition:all 0.2s;"><i data-lucide="map-pin" style="width:16px; height:16px; color:${color}; flex-shrink:0; margin-top:2px;"></i><span style="word-break:break-word; line-height:1.5; white-space:normal; overflow-wrap:break-word;">${escHtml(card.address)}</span></a>` : ''}
           </div>
           
           ${card.about ? `<div style="margin-top:16px; padding-top:16px; border-top:1px solid #e5e7eb;"><p style="font-size:13px; color:#4b5563; line-height:1.6; margin:0;">${escHtml(card.about).replace(/\n/g, '<br>')}</p></div>` : ''}
@@ -327,8 +327,20 @@ function savePublicContact(cardJson) {
     a.download = (card.nome.replace(/\s+/g, '_') || 'contact') + '.vcf';
     a.click();
     URL.revokeObjectURL(a.href);
+    
+    // Mostrar mensagem de sucesso
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = 'position:fixed; top:20px; right:20px; background:#10b981; color:white; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999; animation:slideIn 0.3s ease;';
+    messageDiv.textContent = 'Contacto guardado com sucesso!';
+    document.body.appendChild(messageDiv);
+    setTimeout(() => messageDiv.remove(), 3000);
   } catch (err) {
     console.error('Erro ao salvar contacto:', err);
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = 'position:fixed; top:20px; right:20px; background:#ef4444; color:white; padding:12px 20px; border-radius:8px; font-size:14px; z-index:9999;';
+    messageDiv.textContent = 'Erro ao guardar contacto';
+    document.body.appendChild(messageDiv);
+    setTimeout(() => messageDiv.remove(), 3000);
   }
 }
 
@@ -363,6 +375,15 @@ function lightenColor(hex, pct) {
   g = Math.min(255, g + Math.round((255 - g) * pct / 100));
   b = Math.min(255, b + Math.round((255 - b) * pct / 100));
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+function formatWebsiteUrl(url) {
+  if (!url) return '#';
+  // Se não começa com http:// ou https://, adiciona https://
+  if (!url.match(/^https?:\/\//)) {
+    return 'https://' + url;
+  }
+  return url;
 }
 
 function escHtml(s) {
@@ -633,10 +654,15 @@ async function saveCard() {
     const data = {
       nome: nome,
       cargo: document.getElementById('f-role').value || '',
+      departamento: document.getElementById('f-department').value || '',
       empresa: document.getElementById('f-company').value || '',
       about: document.getElementById('f-about').value || '',
       telemovel: getFirstPhone(),
       email: getFirstEmail(),
+      telefone_empresa: document.getElementById('f-phone-empresa').value || '',
+      email_empresa: document.getElementById('f-email-empresa').value || '',
+      fax: document.getElementById('f-fax').value || '',
+      horario: document.getElementById('f-horario').value || '',
       website: document.getElementById('f-website').value || '',
       address: document.getElementById('f-address').value || '',
       instagram: document.getElementById('f-instagram').value || '',
@@ -791,12 +817,17 @@ function editCard(id) {
   editingCard = card;
   document.getElementById('f-name').value = card.nome || '';
   document.getElementById('f-role').value = card.cargo || '';
+  document.getElementById('f-department').value = card.departamento || '';
   document.getElementById('f-company').value = card.empresa || '';
   document.getElementById('f-about').value = card.about || '';
   document.getElementById('f-website').value = card.website || '';
   document.getElementById('f-address').value = card.address || '';
   document.getElementById('f-phone').value = card.telemovel || '';
   document.getElementById('f-email').value = card.email || '';
+  document.getElementById('f-phone-empresa').value = card.telefone_empresa || '';
+  document.getElementById('f-email-empresa').value = card.email_empresa || '';
+  document.getElementById('f-fax').value = card.fax || '';
+  document.getElementById('f-horario').value = card.horario || '';
   document.getElementById('f-instagram').value = card.instagram || '';
   document.getElementById('f-facebook').value = card.facebook || '';
   document.getElementById('f-linkedin').value = card.linkedin || '';
@@ -842,10 +873,15 @@ async function duplicateCard(id) {
     const data = {
       nome: card.nome || '',
       cargo: card.cargo || '',
+      departamento: card.departamento || '',
       empresa: card.empresa || '',
       about: card.about || '',
       telemovel: card.telemovel || '',
       email: card.email || '',
+      telefone_empresa: card.telefone_empresa || '',
+      email_empresa: card.email_empresa || '',
+      fax: card.fax || '',
+      horario: card.horario || '',
       website: card.website || '',
       address: card.address || '',
       instagram: card.instagram || '',
@@ -1412,11 +1448,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
          <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Informações Pessoais</h4>
-         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo *</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
          </div>
          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
          </div>
          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
+         </div>
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-department">Departamento</label> <input id="f-department" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Design">
          </div>
          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-about">Sobre</label> <textarea id="f-about" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none" rows="3" placeholder="Descreva você ou a sua empresa..."></textarea>
          </div>
@@ -1456,30 +1494,38 @@ document.addEventListener('DOMContentLoaded', async function() {
       <div class="max-w-lg space-y-4">
        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados de Contacto</h4>
-        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telemóvel</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" oninput="updatePreview()">
+        <div id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" oninput="updatePreview()">
         </div>
-        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" type="email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" oninput="updatePreview()">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email Pessoal</label> <input id="f-email" type="email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" oninput="updatePreview()">
+        </div>
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone-empresa">Telefone Empresa</label> <input id="f-phone-empresa" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 2xx xxx xxx">
+        </div>
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-email-empresa">Email Empresa</label> <input id="f-email-empresa" type="email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="contato@empresa.com">
+        </div>
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-fax">Fax</label> <input id="f-fax" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 2xx xxx xxx">
+        </div>
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-horario">Horário de Funcionamento</label> <input id="f-horario" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Seg-Sex: 9h-18h">
         </div>
         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
         </div>
         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
-        </div>
-        <div class="pt-3 border-t border-gray-200">
-         <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Redes Sociais</h5>
-         <div class="space-y-3">
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
-          </div>
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
-          </div>
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
-          </div>
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
-          </div>
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
-          </div>
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
-          </div>
-          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+         <div class="pt-3 border-t border-gray-200">
+          <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Redes Sociais</h5>
+          <div class="space-y-3">
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+           </div>
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
+           </div>
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
+           </div>
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
+           </div>
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
+           </div>
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+           </div>
+           <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+           </div>
           </div>
          </div>
         </div>
@@ -1746,5 +1792,5 @@ function adminDownloadCard(card) {
   showToast('Cartão descarregado!');
 }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f361f3d478777dd',t:'MTc3NzM3OTg4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f36430f430e77dd',t:'MTc3NzM4MTM1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
