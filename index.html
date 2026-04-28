@@ -171,10 +171,21 @@ function checkPublicView() {
 
 async function loadPublicCard(cardId) {
   try {
-    const { data, error } = await sb.from('vcards').select('*').eq('id', cardId).single();
+    // Tenta com a RLS ativa primeiro
+    let { data, error } = await sb.from('vcards').select('*').eq('id', cardId).single();
+    
+    // Se falhar por RLS, tenta sem autenticação
+    if (error) {
+      console.warn('RLS bloqueou, tentando sem autenticação:', error.message);
+      // Cria um cliente sem autenticação para cartões públicos
+      const sbPublic = supabase.createClient('https://tgobchnkeewoonnsesqv.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs');
+      ({ data, error } = await sbPublic.from('vcards').select('*').eq('id', cardId).single());
+    }
+    
     if (error || !data) {
       const loading = document.getElementById('loading-screen');
       if (loading) loading.style.display = 'none';
+      console.error('Erro final ao carregar cartão:', error);
       showToast('Cartão não encontrado');
       return;
     }
@@ -462,12 +473,10 @@ function updatePreview() {
   const nome = document.getElementById('f-name').value || 'João Silva';
   const cargo = document.getElementById('f-role').value || 'Designer Gráfico';
   const empresa = document.getElementById('f-company').value || 'Estúdio Criativo';
-  const telemovel = getFirstPhone();
-  const email = getFirstEmail();
+  const telemovel = document.getElementById('f-phone').value || '';
+  const email = document.getElementById('f-email').value || '';
   const web = document.getElementById('f-website').value;
   const endereco = document.getElementById('f-address').value;
-  const allPhones = getAllPhones();
-  const allEmails = getAllEmails();
 
   document.getElementById('preview-name').textContent = nome;
   document.getElementById('preview-role').textContent = cargo;
@@ -489,22 +498,21 @@ function updatePreview() {
     }
   }
 
-  // Mostrar todos os telefones
+  // Mostrar telefone e email únicos
   const phoneRow = document.getElementById('preview-phone-row');
   const phoneContainer = document.getElementById('preview-phone');
-  if (allPhones.length > 0) {
+  if (telemovel) {
     phoneRow.classList.remove('hidden');
-    phoneContainer.innerHTML = allPhones.map(p => `<span class="inline-block mr-2">${escHtml(p)}</span>`).join('');
+    phoneContainer.textContent = telemovel;
   } else {
     phoneRow.classList.add('hidden');
   }
 
-  // Mostrar todos os emails
   const emailRow = document.getElementById('preview-email-row');
   const emailContainer = document.getElementById('preview-email');
-  if (allEmails.length > 0) {
+  if (email) {
     emailRow.classList.remove('hidden');
-    emailContainer.innerHTML = allEmails.map(e => `<span class="inline-block mr-2">${escHtml(e)}</span>`).join('');
+    emailContainer.textContent = email;
   } else {
     emailRow.classList.add('hidden');
   }
@@ -633,8 +641,8 @@ async function saveCard() {
       cargo: document.getElementById('f-role').value || '',
       empresa: document.getElementById('f-company').value || '',
       about: document.getElementById('f-about').value || '',
-      telefones: getAllPhones().join('|'),
-      emails: getAllEmails().join('|'),
+      telemovel: getFirstPhone(),
+      email: getFirstEmail(),
       website: document.getElementById('f-website').value || '',
       address: document.getElementById('f-address').value || '',
       instagram: document.getElementById('f-instagram').value || '',
@@ -644,8 +652,8 @@ async function saveCard() {
       youtube: document.getElementById('f-youtube').value || '',
       tiktok: document.getElementById('f-tiktok').value || '',
       twitter: document.getElementById('f-twitter').value || '',
-      cover_image: coverUrl,
-      avatar_image: avatarUrl,
+      cover_url: coverUrl,
+      avatar_url: avatarUrl,
       cor_principal: currentColor,
       template: currentTemplate,
       is_public: editingCard?.is_public ?? true,
@@ -675,16 +683,10 @@ async function saveCard() {
 }
 
 function clearForm() {
-  ['f-name', 'f-role', 'f-company', 'f-website', 'f-address', 'f-about', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter', 'f-cover', 'f-avatar'].forEach(id => {
+  ['f-name', 'f-role', 'f-company', 'f-website', 'f-address', 'f-about', 'f-instagram', 'f-facebook', 'f-linkedin', 'f-whatsapp', 'f-youtube', 'f-tiktok', 'f-twitter', 'f-cover', 'f-avatar', 'f-phone', 'f-email'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  phoneFields = [];
-  emailFields = [];
-  document.getElementById('phones-container').innerHTML = '';
-  document.getElementById('emails-container').innerHTML = '';
-  addPhoneField();
-  addEmailField();
   coverImageData = null;
   avatarImageData = null;
   document.getElementById('preview-cover-img').style.display = 'none';
@@ -799,6 +801,8 @@ function editCard(id) {
   document.getElementById('f-about').value = card.about || '';
   document.getElementById('f-website').value = card.website || '';
   document.getElementById('f-address').value = card.address || '';
+  document.getElementById('f-phone').value = card.telemovel || '';
+  document.getElementById('f-email').value = card.email || '';
   document.getElementById('f-instagram').value = card.instagram || '';
   document.getElementById('f-facebook').value = card.facebook || '';
   document.getElementById('f-linkedin').value = card.linkedin || '';
@@ -807,28 +811,8 @@ function editCard(id) {
   document.getElementById('f-tiktok').value = card.tiktok || '';
   document.getElementById('f-twitter').value = card.twitter || '';
   
-  phoneFields = [];
-  emailFields = [];
-  document.getElementById('phones-container').innerHTML = '';
-  document.getElementById('emails-container').innerHTML = '';
-  
-  const telemoveis = card.telefones ? card.telefones.split('|').filter(t => t) : [];
-  const emails = card.emails ? card.emails.split('|').filter(e => e) : [];
-  
-  if (telemoveis.length > 0) {
-    telemoveis.forEach(tel => addPhoneField(tel));
-  } else {
-    addPhoneField();
-  }
-  
-  if (emails.length > 0) {
-    emails.forEach(email => addEmailField(email));
-  } else {
-    addEmailField();
-  }
-  
-  coverImageData = card.cover_image || null;
-  avatarImageData = card.avatar_image || null;
+  coverImageData = card.cover_url || null;
+  avatarImageData = card.avatar_url || null;
   
   if (coverImageData) {
     document.getElementById('preview-cover-img').src = coverImageData;
@@ -865,8 +849,8 @@ async function duplicateCard(id) {
       cargo: card.cargo || '',
       empresa: card.empresa || '',
       about: card.about || '',
-      telefones: card.telefones || '',
-      emails: card.emails || '',
+      telemovel: card.telemovel || '',
+      email: card.email || '',
       website: card.website || '',
       address: card.address || '',
       instagram: card.instagram || '',
@@ -876,8 +860,8 @@ async function duplicateCard(id) {
       youtube: card.youtube || '',
       tiktok: card.tiktok || '',
       twitter: card.twitter || '',
-      cover_image: card.cover_image || null,
-      avatar_image: card.avatar_image || null,
+      cover_url: card.cover_url || null,
+      avatar_url: card.avatar_url || null,
       cor_principal: card.cor_principal || '#4338ca',
       template: card.template || 'classic',
       created_by: currentUser.id,
@@ -987,8 +971,8 @@ function getExportCard() {
     nome: document.getElementById('f-name').value || '',
     cargo: document.getElementById('f-role').value || '',
     empresa: document.getElementById('f-company').value || '',
-    telefones: getAllPhones(),
-    emails: getAllEmails(),
+    telemovel: document.getElementById('f-phone').value || '',
+    email: document.getElementById('f-email').value || '',
     website: document.getElementById('f-website').value || '',
     address: document.getElementById('f-address').value || '',
     about: document.getElementById('f-about').value || '',
@@ -1015,12 +999,8 @@ function downloadVCF() {
   let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${c.nome}\n`;
   if (c.cargo) vcf += `TITLE:${c.cargo}\n`;
   if (c.empresa) vcf += `ORG:${c.empresa}\n`;
-  if (c.telefones && c.telefones.length > 0) {
-    c.telefones.forEach(tel => vcf += `TEL;TYPE=CELL:${tel}\n`);
-  }
-  if (c.emails && c.emails.length > 0) {
-    c.emails.forEach(email => vcf += `EMAIL:${email}\n`);
-  }
+  if (c.telemovel) vcf += `TEL;TYPE=CELL:${c.telemovel}\n`;
+  if (c.email) vcf += `EMAIL:${c.email}\n`;
   if (c.website) vcf += `URL:${c.website}\n`;
   if (c.address) vcf += `ADR;TYPE=WORK:;;${c.address};;;;\n`;
   vcf += `END:VCARD`;
@@ -1142,19 +1122,13 @@ async function loadAdminPanel() {
         
         const info = document.createElement('div');
         info.className = 'flex-1';
-        const telefonesDisplay = card.telefones 
-          ? card.telefones.split('|').filter(t => t).slice(0, 2).join(', ') + (card.telefones.split('|').filter(t => t).length > 2 ? '...' : '')
-          : 'Sem telefone';
-        const emailsDisplay = card.emails 
-          ? card.emails.split('|').filter(e => e).slice(0, 2).join(', ') + (card.emails.split('|').filter(e => e).length > 2 ? '...' : '')
-          : 'Sem email';
         
         info.innerHTML = `
           <p class="text-sm font-medium text-gray-800">${escHtml(card.nome || 'Sem nome')}</p>
           <p class="text-xs text-gray-500">${card.cargo ? escHtml(card.cargo) + ' · ' : ''}${card.empresa ? escHtml(card.empresa) : ''}</p>
           <p class="text-xs text-gray-400 mt-1">
-            <i data-lucide="phone" class="w-3 h-3 inline mr-1"></i>${telefonesDisplay} | 
-            <i data-lucide="mail" class="w-3 h-3 inline mx-1"></i>${emailsDisplay}
+            <i data-lucide="phone" class="w-3 h-3 inline mr-1"></i>${escHtml(card.telemovel || 'Sem telefone')} | 
+            <i data-lucide="mail" class="w-3 h-3 inline mx-1"></i>${escHtml(card.email || 'Sem email')}
           </p>
           <p class="text-xs text-blue-600 mt-1">
             <i data-lucide="eye" class="w-3 h-3 inline mr-1"></i>Visitas: <span class="font-semibold">${visits}</span> | 
@@ -1255,7 +1229,7 @@ async function adminExportMass() {
     const { data: allCardsData } = await sb.from('vcards').select('*');
     
     let csvContent = 'data:text/csv;charset=utf-8,' + 
-      'Nome,Cargo,Empresa,Telefones,Emails,Website,Morada,Redes Sociais,Data Criação\n';
+      'Nome,Cargo,Empresa,Telefone,Email,Website,Morada,Redes Sociais,Data Criação\n';
     
     allCardsData.forEach(card => {
       const socials = [
@@ -1272,8 +1246,8 @@ async function adminExportMass() {
         card.nome || '',
         card.cargo || '',
         card.empresa || '',
-        (card.telefones || '').replace(/\|/g, '; '),
-        (card.emails || '').replace(/\|/g, '; '),
+        card.telemovel || '',
+        card.email || '',
         card.website || '',
         card.address || '',
         socials,
@@ -1500,12 +1474,10 @@ document.addEventListener('DOMContentLoaded', async function() {
        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados de Contacto</h4>
         <div>
-         <label class="block text-xs font-medium text-gray-500 mb-2">Telefones</label>
-         <div id="phones-container" class="space-y-2 mb-2"></div><button type="button" onclick="addPhoneField()" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#4338ca;">+ Adicionar Telefone</button>
+         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telemóvel</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" oninput="updatePreview()">
         </div>
         <div>
-         <label class="block text-xs font-medium text-gray-500 mb-2">Emails</label>
-         <div id="emails-container" class="space-y-2 mb-2"></div><button type="button" onclick="addEmailField()" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:#4338ca;">+ Adicionar Email</button>
+         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" type="email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" oninput="updatePreview()">
         </div>
         <div>
          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
@@ -1665,13 +1637,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updatePreview);
 });
-
-// Initialize avatar editor variables
-let avatarEditorData = { x: 0, y: 0, zoom: 100, isDragging: false, startX: 0, startY: 0 };
-
-// Initialize phone and email fields
-addPhoneField();
-addEmailField();
 
 document.getElementById('f-cover').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -1877,5 +1842,5 @@ function adminDownloadCard(card) {
   showToast('Cartão descarregado!');
 }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f358dcd43d077dd',t:'MTc3NzM3MzkyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f359971b21077dd',t:'MTc3NzM3NDQwNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
