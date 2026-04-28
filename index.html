@@ -102,7 +102,6 @@
   <style>body { box-sizing: border-box; }</style>
   <script>
 let sb = null;
-let sbPublic = null;
 let currentUser = null;
 let allCards = [];
 let editingCard = null;
@@ -118,6 +117,15 @@ const ADMIN_EMAILS = ['admin@vcard.ao'];
 let adminSearchQuery = '';
 let adminCompanyFilter = '';
 
+function saveContactToDevice() {
+  const vcard = getExportCard();
+  if (!vcard.nome) {
+    showToast('Preencha pelo menos o nome');
+    return;
+  }
+  downloadVCF();
+}
+
 const sectionMeta = {
   dashboard: { title: 'Dashboard', desc: 'Os seus cartões guardados' },
   perfil: { title: 'Perfil', desc: 'Preencha os dados do seu cartão' },
@@ -131,28 +139,52 @@ const sectionMeta = {
 async function initSupabase() {
   const SUPABASE_URL = 'https://tgobchnkeewoonnsesqv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs';
-  
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  sbPublic = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function checkPublicView() {
+  const params = new URLSearchParams(window.location.search);
+  const viewId = params.get('view');
+  if (viewId) {
+    loadPublicCard(viewId);
+    return true;
+  }
+  
+  // Se não for view pública, esconde o loading e mostra login
+  setTimeout(() => {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+      loadingScreen.style.display = 'none';
+    }
+    
+    // Só chama estas funções se os elementos existirem
+    if (document.getElementById('f-name')) {
+      updatePreview();
+      pickColor('#4338ca');
+      pickTemplate('classic');
+    }
+    lucide.createIcons();
+  }, 100);
+  
+  return false;
 }
 
 async function loadPublicCard(cardId) {
   try {
-    const { data, error } = await sbPublic
-      .from('vcards')
-      .select('*')
-      .eq('id', cardId)
-      .eq('is_public', true)
-      .single();
+    // Cliente público sem autenticação para cartões públicos
+    const sbPublic = supabase.createClient('https://tgobchnkeewoonnsesqv.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs');
+    
+    const { data, error } = await sbPublic.from('vcards').select('*').eq('id', cardId).maybeSingle();
     
     if (error || !data) {
-      console.error('Erro ao carregar cartão:', error);
       const loading = document.getElementById('loading-screen');
       if (loading) loading.style.display = 'none';
+      console.error('Erro ao carregar cartão público:', error);
       showToast('Cartão não encontrado');
       return;
     }
     
+    // Registar visita
     await recordCardVisit(cardId, data.created_by);
     
     viewingPublicCard = data;
@@ -173,27 +205,24 @@ async function recordCardVisit(cardId, userId) {
     const existingVisits = parseInt(localStorage.getItem(visitKey) || '0');
     localStorage.setItem(visitKey, (existingVisits + 1).toString());
     
-    try {
-      const { data: existingRecord } = await sbPublic
-        .from('card_visits')
-        .select('*')
-        .eq('card_id', cardId)
-        .eq('date', new Date().toISOString().split('T')[0])
-        .single();
-      
-      if (existingRecord) {
-        await sbPublic.from('card_visits').update({ visit_count: existingRecord.visit_count + 1 })
-          .eq('id', existingRecord.id);
-      } else {
-        await sbPublic.from('card_visits').insert({
-          card_id: cardId,
-          created_by: userId,
-          date: new Date().toISOString().split('T')[0],
-          visit_count: 1
-        });
-      }
-    } catch (visitsErr) {
-      console.log('Não foi possível registar visita');
+    // Sincronizar com Supabase
+    const { data: existingRecord } = await sb
+      .from('card_visits')
+      .select('*')
+      .eq('card_id', cardId)
+      .eq('date', new Date().toISOString().split('T')[0])
+      .single();
+    
+    if (existingRecord) {
+      await sb.from('card_visits').update({ visit_count: existingRecord.visit_count + 1 })
+        .eq('id', existingRecord.id);
+    } else {
+      await sb.from('card_visits').insert({
+        card_id: cardId,
+        created_by: userId,
+        date: new Date().toISOString().split('T')[0],
+        visit_count: 1
+      });
     }
   } catch (err) {
     console.error('Erro ao registar visita:', err);
@@ -218,7 +247,7 @@ function displayPublicCard(card) {
     <div style="width:100%; display:flex; align-items:center; justify-content:center; padding:20px 16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
       <div style="width:100%; max-width:480px; background:white; border-radius:24px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
         <!-- Banner opcional -->
-        <div style="height:80px; background:${card.cover_image ? `url('${card.cover_image}') center/cover` : bannerBg};"></div>
+        <div style="height:80px; background:${card.cover_image ? `url(${card.cover_image}) center/cover` : bannerBg};"></div>
         
         <!-- Conteúdo -->
         <div style="padding:32px 24px 24px 24px;">
@@ -463,6 +492,7 @@ function updatePreview() {
     }
   }
 
+  // Mostrar telefone e email únicos
   const phoneRow = document.getElementById('preview-phone-row');
   const phoneContainer = document.getElementById('preview-phone');
   if (telemovel) {
@@ -605,8 +635,8 @@ async function saveCard() {
       cargo: document.getElementById('f-role').value || '',
       empresa: document.getElementById('f-company').value || '',
       about: document.getElementById('f-about').value || '',
-      telemovel: document.getElementById('f-phone').value || '',
-      email: document.getElementById('f-email').value || '',
+      telemovel: getFirstPhone(),
+      email: getFirstEmail(),
       website: document.getElementById('f-website').value || '',
       address: document.getElementById('f-address').value || '',
       instagram: document.getElementById('f-instagram').value || '',
@@ -616,11 +646,11 @@ async function saveCard() {
       youtube: document.getElementById('f-youtube').value || '',
       tiktok: document.getElementById('f-tiktok').value || '',
       twitter: document.getElementById('f-twitter').value || '',
-      cover_image: coverUrl,
-      avatar_image: avatarUrl,
+      cover_url: coverUrl,
+      avatar_url: avatarUrl,
       cor_principal: currentColor,
       template: currentTemplate,
-      is_public: true,
+      is_public: editingCard?.is_public ?? true,
       updated_at: new Date().toISOString()
     };
 
@@ -668,8 +698,10 @@ async function loadUserCards() {
   if (!currentUser) return;
   
   try {
+    // Check if user is admin
     const isAdmin = ADMIN_EMAILS.includes(currentUser.email);
     
+    // Admin fetches ALL cards, regular users fetch only theirs
     let query = sb.from('vcards').select('*');
     
     if (!isAdmin) {
@@ -680,6 +712,8 @@ async function loadUserCards() {
     
     if (error) {
       console.error('Erro ao carregar:', error);
+      // Show warning but continue - RLS might be blocking
+      showToast('Aviso: Não consegui carregar todos os dados');
       allCards = [];
     } else {
       allCards = data || [];
@@ -771,8 +805,8 @@ function editCard(id) {
   document.getElementById('f-tiktok').value = card.tiktok || '';
   document.getElementById('f-twitter').value = card.twitter || '';
   
-  coverImageData = card.cover_image || null;
-  avatarImageData = card.avatar_image || null;
+  coverImageData = card.cover_url || null;
+  avatarImageData = card.avatar_url || null;
   
   if (coverImageData) {
     document.getElementById('preview-cover-img').src = coverImageData;
@@ -820,14 +854,13 @@ async function duplicateCard(id) {
       youtube: card.youtube || '',
       tiktok: card.tiktok || '',
       twitter: card.twitter || '',
-      cover_image: card.cover_image || null,
-      avatar_image: card.avatar_image || null,
+      cover_url: card.cover_url || null,
+      avatar_url: card.avatar_url || null,
       cor_principal: card.cor_principal || '#4338ca',
       template: card.template || 'classic',
       created_by: currentUser.id,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_public: true
+      updated_at: new Date().toISOString()
     };
 
     const result = await sb.from('vcards').insert([data]);
@@ -990,6 +1023,7 @@ function downloadQR() {
 
   const vCardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${c.nome}\nTEL:${c.telemovel || ''}\nEMAIL:${c.email || ''}\nORG:${c.empresa || ''}\nTITLE:${c.cargo || ''}\nEND:VCARD`;
 
+  // Aguarda um pouco para garantir que a biblioteca está carregada
   setTimeout(() => {
     if (typeof QRCode !== 'undefined') {
       new QRCode(qrDiv, {
@@ -1023,6 +1057,7 @@ async function loadAdminPanel() {
     const { data: allCardsData, error } = await sb.from('vcards').select('*').order('created_at', { ascending: false });
     if (error) throw error;
 
+    // Carregar dados de visitas
     let visitsByCard = {};
     let totalVisits = 0;
     try {
@@ -1033,6 +1068,8 @@ async function loadAdminPanel() {
       });
     } catch (visitsErr) {
       console.log('Tabela de visitas não existe ainda ou erro ao carregar');
+      visitsByCard = {};
+      totalVisits = 0;
     }
 
     const uniqueUsers = new Set(allCardsData.map(c => c.created_by)).size;
@@ -1046,6 +1083,7 @@ async function loadAdminPanel() {
     document.getElementById('admin-cards-count').textContent = allCardsData.length;
     document.getElementById('admin-today-count').textContent = todayCards;
 
+    // Filtrar cartões
     let filteredCards = allCardsData;
     if (adminSearchQuery && adminSearchQuery.trim()) {
       const query = adminSearchQuery.toLowerCase();
@@ -1061,8 +1099,10 @@ async function loadAdminPanel() {
       );
     }
 
+    // Ordenar por visitas decrescentes
     filteredCards.sort((a, b) => (visitsByCard[b.id] || 0) - (visitsByCard[a.id] || 0));
 
+    // Atualizar lista
     const list = document.getElementById('admin-cards-list');
     list.innerHTML = '';
 
@@ -1111,6 +1151,7 @@ async function loadAdminPanel() {
       });
     }
 
+    // Atualizar lista de empresas para filtro
     const companies = [...new Set(allCardsData.map(c => c.empresa).filter(e => e))].sort();
     const companyFilter = document.getElementById('admin-company-filter');
     if (companyFilter) {
@@ -1158,6 +1199,7 @@ async function adminDeleteCard(card) {
       const { error } = await sb.from('vcards').delete().eq('id', card.id);
       if (error) throw error;
       
+      // Eliminar visitas também
       await sb.from('card_visits').delete().eq('card_id', card.id);
       
       showToast('Cartão eliminado!');
@@ -1226,6 +1268,7 @@ async function adminExportMass() {
   }
 }
 
+// Persiste o login do usuário
 async function restoreSession() {
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -1252,25 +1295,30 @@ async function restoreSession() {
   return false;
 }
 
+// Espera o DOM estar pronto e inicializa corretamente
 document.addEventListener('DOMContentLoaded', async function() {
   await initSupabase();
   
   const params = new URLSearchParams(window.location.search);
   const viewId = params.get('view');
   
+  // Se é link público, carregar cartão público E SAIR
   if (viewId) {
     document.getElementById('loading-screen').style.display = 'flex';
     await loadPublicCard(viewId);
-    return;
+    return; // 👈 IMPORTANTE: Não continua com login logic
   }
   
+  // Só se NÃO é view pública, tenta restaurar sessão
   const sessionRestored = await restoreSession();
   
   if (!sessionRestored) {
+    // Se não há sessão, mostra login
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
     
+    // Só atualiza preview se os elementos existirem
     if (document.getElementById('f-name')) {
       updatePreview();
       pickColor('#4338ca');
@@ -1348,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           <p class="text-xs text-gray-400 mt-1">Recomendado: 800x300px</p>
          </div>
          <div><label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
-          <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p>
+          <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p><button type="button" id="edit-avatar-btn" onclick="openAvatarEditor()" class="mt-2 px-3 py-1.5 rounded-lg text-sm text-white" style="background:#4338ca; display:none;">Editar Foto</button>
          </div>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
@@ -1367,7 +1415,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Pré-visualização</h4>
         <div id="preview-card" class="bg-white rounded-2xl border border-gray-200 shadow-sm" style="overflow:visible;">
          <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;"><img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
-          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow:hidden z-10" style="color:#4338ca;"><img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow-hidden z-10" style="color:#4338ca;"><img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
            <div id="preview-avatar">
             J
            </div>
@@ -1566,23 +1614,179 @@ document.getElementById('f-avatar').addEventListener('change', function(e) {
   const reader = new FileReader();
   reader.onload = function(event) {
     avatarImageData = file;
+    const btn = document.getElementById('edit-avatar-btn');
+    btn.style.display = 'block';
     updatePreview();
   };
   reader.readAsDataURL(file);
 });
 
+function openAvatarEditor() {
+  if (!avatarImageData || !(avatarImageData instanceof File)) {
+    showToast('Selecione uma imagem primeiro');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const modal = document.getElementById('avatar-editor-modal');
+    const editorImg = document.getElementById('avatar-editor-img');
+    const previewImg = document.getElementById('avatar-preview-circle');
+    
+    editorImg.src = event.target.result;
+    previewImg.src = event.target.result;
+    
+    avatarEditorData = { x: 0, y: 0, zoom: 100, isDragging: false, startX: 0, startY: 0 };
+    updateAvatarEditorDisplay();
+    
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+    
+    setupAvatarDragging();
+  };
+  reader.readAsDataURL(avatarImageData);
+}
+
+function setupAvatarDragging() {
+  const img = document.getElementById('avatar-editor-img');
+  const container = img.parentElement;
+  const zoomSlider = document.getElementById('avatar-zoom');
+
+  img.onmousedown = (e) => {
+    avatarEditorData.isDragging = true;
+    avatarEditorData.startX = e.clientX - avatarEditorData.x;
+    avatarEditorData.startY = e.clientY - avatarEditorData.y;
+    img.style.cursor = 'grabbing';
+  };
+
+  document.onmousemove = (e) => {
+    if (!avatarEditorData.isDragging) return;
+    avatarEditorData.x = e.clientX - avatarEditorData.startX;
+    avatarEditorData.y = e.clientY - avatarEditorData.startY;
+    updateAvatarEditorDisplay();
+  };
+
+  document.onmouseup = () => {
+    avatarEditorData.isDragging = false;
+    img.style.cursor = 'grab';
+  };
+
+  zoomSlider.oninput = (e) => {
+    avatarEditorData.zoom = parseInt(e.target.value);
+    document.getElementById('zoom-value').textContent = avatarEditorData.zoom;
+    updateAvatarEditorDisplay();
+  };
+}
+
+function updateAvatarEditorDisplay() {
+  const img = document.getElementById('avatar-editor-img');
+  const previewImg = document.getElementById('avatar-preview-circle');
+  const scale = avatarEditorData.zoom / 100;
+
+  img.style.transform = `translate(${avatarEditorData.x}px, ${avatarEditorData.y}px) scale(${scale})`;
+  previewImg.style.transform = `translate(${avatarEditorData.x}px, ${avatarEditorData.y}px) scale(${scale})`;
+}
+
+function saveAvatarEdit() {
+  const modal = document.getElementById('avatar-editor-modal');
+  const previewImg = document.getElementById('avatar-preview-circle');
+  const previewCircle = document.getElementById('preview-avatar-img');
+  
+  previewCircle.src = previewImg.src;
+  previewCircle.style.transform = `translate(${avatarEditorData.x}px, ${avatarEditorData.y}px) scale(${avatarEditorData.zoom / 100})`;
+  previewCircle.style.display = 'block';
+  document.getElementById('preview-avatar').style.display = 'none';
+  
+  modal.classList.add('hidden');
+  updatePreview();
+  showToast('Foto de perfil guardada!');
+}
+
+function closeAvatarEditor() {
+  document.getElementById('avatar-editor-modal').classList.add('hidden');
+  document.onmousemove = null;
+  document.onmouseup = null;
+}
+
+function addPhoneField(value = '') {
+  const id = 'phone-' + Date.now() + Math.random();
+  phoneFields.push(id);
+  const container = document.getElementById('phones-container');
+  const div = document.createElement('div');
+  div.className = 'flex gap-2';
+  div.innerHTML = `
+    <input type="text" id="${id}" class="field-input flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" value="${escHtml(value)}" oninput="updatePreview()">
+    <button type="button" onclick="removePhoneField('${id}')" class="px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition">
+      <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+  `;
+  container.appendChild(div);
+  lucide.createIcons();
+}
+
+function removePhoneField(id) {
+  const idx = phoneFields.indexOf(id);
+  if (idx > -1) phoneFields.splice(idx, 1);
+  const el = document.getElementById(id);
+  if (el) el.parentElement.remove();
+  updatePreview();
+}
+
+function getAllPhones() {
+  return phoneFields
+    .map(id => document.getElementById(id)?.value || '')
+    .filter(v => v.trim());
+}
+
+function getFirstPhone() {
+  const phones = getAllPhones();
+  return phones.length > 0 ? phones[0] : '';
+}
+
+function addEmailField(value = '') {
+  const id = 'email-' + Date.now() + Math.random();
+  emailFields.push(id);
+  const container = document.getElementById('emails-container');
+  const div = document.createElement('div');
+  div.className = 'flex gap-2';
+  div.innerHTML = `
+    <input type="email" id="${id}" class="field-input flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" value="${escHtml(value)}" oninput="updatePreview()">
+    <button type="button" onclick="removeEmailField('${id}')" class="px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition">
+      <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+  `;
+  container.appendChild(div);
+  lucide.createIcons();
+}
+
+function removeEmailField(id) {
+  const idx = emailFields.indexOf(id);
+  if (idx > -1) emailFields.splice(idx, 1);
+  const el = document.getElementById(id);
+  if (el) el.parentElement.remove();
+  updatePreview();
+}
+
+function getAllEmails() {
+  return emailFields
+    .map(id => document.getElementById(id)?.value || '')
+    .filter(v => v.trim());
+}
+
+function getFirstEmail() {
+  const emails = getAllEmails();
+  return emails.length > 0 ? emails[0] : '';
+}
+
 function adminDownloadCard(card) {
-  const parts = (card.nome || '').split(' ');
-  const last = parts.length > 1 ? parts.pop() : '';
-  const first = parts.join(' ');
-  let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${card.nome}\n`;
-  if (card.cargo) vcf += `TITLE:${card.cargo}\n`;
-  if (card.empresa) vcf += `ORG:${card.empresa}\n`;
-  if (card.telemovel) vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
-  if (card.email) vcf += `EMAIL:${card.email}\n`;
-  if (card.website) vcf += `URL:${card.website}\n`;
-  if (card.address) vcf += `ADR;TYPE=WORK:;;${card.address};;;;\n`;
-  vcf += `END:VCARD`;
+  const vcardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${card.nome}\nTITLE:${card.cargo || ''}\nORG:${card.empresa || ''}\n`;
+  const telefones = card.telefones ? card.telefones.split('|').filter(t => t) : [];
+  const emails = card.emails ? card.emails.split('|').filter(e => e) : [];
+  
+  telefones.forEach(tel => vcardData += `TEL;TYPE=CELL:${tel}\n`);
+  emails.forEach(email => vcardData += `EMAIL:${email}\n`);
+  
+  const vcf = vcardData + `END:VCARD`;
   
   const blob = new Blob([vcf], { type: 'text/vcard' });
   const a = document.createElement('a');
@@ -1593,5 +1797,5 @@ function adminDownloadCard(card) {
   showToast('Cartão descarregado!');
 }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f35ba17778077dd',t:'MTc3NzM3NTc0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f35f695725a77dd',t:'MTc3NzM3ODIyMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
