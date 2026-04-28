@@ -102,6 +102,7 @@
   <style>body { box-sizing: border-box; }</style>
   <script>
 let sb = null;
+let sbPublic = null;
 let currentUser = null;
 let allCards = [];
 let editingCard = null;
@@ -117,15 +118,6 @@ const ADMIN_EMAILS = ['admin@vcard.ao'];
 let adminSearchQuery = '';
 let adminCompanyFilter = '';
 
-function saveContactToDevice() {
-  const vcard = getExportCard();
-  if (!vcard.nome) {
-    showToast('Preencha pelo menos o nome');
-    return;
-  }
-  downloadVCF();
-}
-
 const sectionMeta = {
   dashboard: { title: 'Dashboard', desc: 'Os seus cartões guardados' },
   perfil: { title: 'Perfil', desc: 'Preencha os dados do seu cartão' },
@@ -139,52 +131,28 @@ const sectionMeta = {
 async function initSupabase() {
   const SUPABASE_URL = 'https://tgobchnkeewoonnsesqv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs';
+  
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
-
-function checkPublicView() {
-  const params = new URLSearchParams(window.location.search);
-  const viewId = params.get('view');
-  if (viewId) {
-    loadPublicCard(viewId);
-    return true;
-  }
-  
-  // Se não for view pública, esconde o loading e mostra login
-  setTimeout(() => {
-    const loadingScreen = document.getElementById('loading-screen');
-    if (loadingScreen) {
-      loadingScreen.style.display = 'none';
-    }
-    
-    // Só chama estas funções se os elementos existirem
-    if (document.getElementById('f-name')) {
-      updatePreview();
-      pickColor('#4338ca');
-      pickTemplate('classic');
-    }
-    lucide.createIcons();
-  }, 100);
-  
-  return false;
+  sbPublic = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 async function loadPublicCard(cardId) {
   try {
-    // Cliente público sem autenticação para cartões públicos
-    const sbPublic = supabase.createClient('https://tgobchnkeewoonnsesqv.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs');
-    
-    const { data, error } = await sbPublic.from('vcards').select('*').eq('id', cardId).maybeSingle();
+    const { data, error } = await sbPublic
+      .from('vcards')
+      .select('*')
+      .eq('id', cardId)
+      .eq('is_public', true)
+      .single();
     
     if (error || !data) {
+      console.error('Erro ao carregar cartão:', error);
       const loading = document.getElementById('loading-screen');
       if (loading) loading.style.display = 'none';
-      console.error('Erro ao carregar cartão público:', error);
       showToast('Cartão não encontrado');
       return;
     }
     
-    // Registar visita
     await recordCardVisit(cardId, data.created_by);
     
     viewingPublicCard = data;
@@ -205,24 +173,27 @@ async function recordCardVisit(cardId, userId) {
     const existingVisits = parseInt(localStorage.getItem(visitKey) || '0');
     localStorage.setItem(visitKey, (existingVisits + 1).toString());
     
-    // Sincronizar com Supabase
-    const { data: existingRecord } = await sb
-      .from('card_visits')
-      .select('*')
-      .eq('card_id', cardId)
-      .eq('date', new Date().toISOString().split('T')[0])
-      .single();
-    
-    if (existingRecord) {
-      await sb.from('card_visits').update({ visit_count: existingRecord.visit_count + 1 })
-        .eq('id', existingRecord.id);
-    } else {
-      await sb.from('card_visits').insert({
-        card_id: cardId,
-        created_by: userId,
-        date: new Date().toISOString().split('T')[0],
-        visit_count: 1
-      });
+    try {
+      const { data: existingRecord } = await sbPublic
+        .from('card_visits')
+        .select('*')
+        .eq('card_id', cardId)
+        .eq('date', new Date().toISOString().split('T')[0])
+        .single();
+      
+      if (existingRecord) {
+        await sbPublic.from('card_visits').update({ visit_count: existingRecord.visit_count + 1 })
+          .eq('id', existingRecord.id);
+      } else {
+        await sbPublic.from('card_visits').insert({
+          card_id: cardId,
+          created_by: userId,
+          date: new Date().toISOString().split('T')[0],
+          visit_count: 1
+        });
+      }
+    } catch (visitsErr) {
+      console.log('Não foi possível registar visita');
     }
   } catch (err) {
     console.error('Erro ao registar visita:', err);
@@ -247,7 +218,7 @@ function displayPublicCard(card) {
     <div style="width:100%; display:flex; align-items:center; justify-content:center; padding:20px 16px; box-sizing:border-box; font-family: 'DM Sans', Arial, sans-serif;">
       <div style="width:100%; max-width:480px; background:white; border-radius:24px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.1);">
         <!-- Banner opcional -->
-        <div style="height:80px; background:${card.cover_image ? `url(${card.cover_image}) center/cover` : bannerBg};"></div>
+        <div style="height:80px; background:${card.cover_image ? `url('${card.cover_image}') center/cover` : bannerBg};"></div>
         
         <!-- Conteúdo -->
         <div style="padding:32px 24px 24px 24px;">
@@ -492,7 +463,6 @@ function updatePreview() {
     }
   }
 
-  // Mostrar telefone e email únicos
   const phoneRow = document.getElementById('preview-phone-row');
   const phoneContainer = document.getElementById('preview-phone');
   if (telemovel) {
@@ -635,8 +605,8 @@ async function saveCard() {
       cargo: document.getElementById('f-role').value || '',
       empresa: document.getElementById('f-company').value || '',
       about: document.getElementById('f-about').value || '',
-      telemovel: getFirstPhone(),
-      email: getFirstEmail(),
+      telemovel: document.getElementById('f-phone').value || '',
+      email: document.getElementById('f-email').value || '',
       website: document.getElementById('f-website').value || '',
       address: document.getElementById('f-address').value || '',
       instagram: document.getElementById('f-instagram').value || '',
@@ -646,11 +616,11 @@ async function saveCard() {
       youtube: document.getElementById('f-youtube').value || '',
       tiktok: document.getElementById('f-tiktok').value || '',
       twitter: document.getElementById('f-twitter').value || '',
-      cover_url: coverUrl,
-      avatar_url: avatarUrl,
+      cover_image: coverUrl,
+      avatar_image: avatarUrl,
       cor_principal: currentColor,
       template: currentTemplate,
-      is_public: editingCard?.is_public ?? true,
+      is_public: true,
       updated_at: new Date().toISOString()
     };
 
@@ -698,10 +668,8 @@ async function loadUserCards() {
   if (!currentUser) return;
   
   try {
-    // Check if user is admin
     const isAdmin = ADMIN_EMAILS.includes(currentUser.email);
     
-    // Admin fetches ALL cards, regular users fetch only theirs
     let query = sb.from('vcards').select('*');
     
     if (!isAdmin) {
@@ -712,8 +680,6 @@ async function loadUserCards() {
     
     if (error) {
       console.error('Erro ao carregar:', error);
-      // Show warning but continue - RLS might be blocking
-      showToast('Aviso: Não consegui carregar todos os dados');
       allCards = [];
     } else {
       allCards = data || [];
@@ -805,8 +771,8 @@ function editCard(id) {
   document.getElementById('f-tiktok').value = card.tiktok || '';
   document.getElementById('f-twitter').value = card.twitter || '';
   
-  coverImageData = card.cover_url || null;
-  avatarImageData = card.avatar_url || null;
+  coverImageData = card.cover_image || null;
+  avatarImageData = card.avatar_image || null;
   
   if (coverImageData) {
     document.getElementById('preview-cover-img').src = coverImageData;
@@ -854,13 +820,14 @@ async function duplicateCard(id) {
       youtube: card.youtube || '',
       tiktok: card.tiktok || '',
       twitter: card.twitter || '',
-      cover_url: card.cover_url || null,
-      avatar_url: card.avatar_url || null,
+      cover_image: card.cover_image || null,
+      avatar_image: card.avatar_image || null,
       cor_principal: card.cor_principal || '#4338ca',
       template: card.template || 'classic',
       created_by: currentUser.id,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      is_public: true
     };
 
     const result = await sb.from('vcards').insert([data]);
@@ -1023,7 +990,6 @@ function downloadQR() {
 
   const vCardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${c.nome}\nTEL:${c.telemovel || ''}\nEMAIL:${c.email || ''}\nORG:${c.empresa || ''}\nTITLE:${c.cargo || ''}\nEND:VCARD`;
 
-  // Aguarda um pouco para garantir que a biblioteca está carregada
   setTimeout(() => {
     if (typeof QRCode !== 'undefined') {
       new QRCode(qrDiv, {
@@ -1057,7 +1023,6 @@ async function loadAdminPanel() {
     const { data: allCardsData, error } = await sb.from('vcards').select('*').order('created_at', { ascending: false });
     if (error) throw error;
 
-    // Carregar dados de visitas
     let visitsByCard = {};
     let totalVisits = 0;
     try {
@@ -1068,8 +1033,6 @@ async function loadAdminPanel() {
       });
     } catch (visitsErr) {
       console.log('Tabela de visitas não existe ainda ou erro ao carregar');
-      visitsByCard = {};
-      totalVisits = 0;
     }
 
     const uniqueUsers = new Set(allCardsData.map(c => c.created_by)).size;
@@ -1083,7 +1046,6 @@ async function loadAdminPanel() {
     document.getElementById('admin-cards-count').textContent = allCardsData.length;
     document.getElementById('admin-today-count').textContent = todayCards;
 
-    // Filtrar cartões
     let filteredCards = allCardsData;
     if (adminSearchQuery && adminSearchQuery.trim()) {
       const query = adminSearchQuery.toLowerCase();
@@ -1099,10 +1061,8 @@ async function loadAdminPanel() {
       );
     }
 
-    // Ordenar por visitas decrescentes
     filteredCards.sort((a, b) => (visitsByCard[b.id] || 0) - (visitsByCard[a.id] || 0));
 
-    // Atualizar lista
     const list = document.getElementById('admin-cards-list');
     list.innerHTML = '';
 
@@ -1151,7 +1111,6 @@ async function loadAdminPanel() {
       });
     }
 
-    // Atualizar lista de empresas para filtro
     const companies = [...new Set(allCardsData.map(c => c.empresa).filter(e => e))].sort();
     const companyFilter = document.getElementById('admin-company-filter');
     if (companyFilter) {
@@ -1199,7 +1158,6 @@ async function adminDeleteCard(card) {
       const { error } = await sb.from('vcards').delete().eq('id', card.id);
       if (error) throw error;
       
-      // Eliminar visitas também
       await sb.from('card_visits').delete().eq('card_id', card.id);
       
       showToast('Cartão eliminado!');
@@ -1268,7 +1226,6 @@ async function adminExportMass() {
   }
 }
 
-// Persiste o login do usuário
 async function restoreSession() {
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -1295,30 +1252,25 @@ async function restoreSession() {
   return false;
 }
 
-// Espera o DOM estar pronto e inicializa corretamente
 document.addEventListener('DOMContentLoaded', async function() {
   await initSupabase();
   
   const params = new URLSearchParams(window.location.search);
   const viewId = params.get('view');
   
-  // Se é link público, carregar cartão público E SAIR
   if (viewId) {
     document.getElementById('loading-screen').style.display = 'flex';
     await loadPublicCard(viewId);
-    return; // 👈 IMPORTANTE: Não continua com login logic
+    return;
   }
   
-  // Só se NÃO é view pública, tenta restaurar sessão
   const sessionRestored = await restoreSession();
   
   if (!sessionRestored) {
-    // Se não há sessão, mostra login
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
     
-    // Só atualiza preview se os elementos existirem
     if (document.getElementById('f-name')) {
       updatePreview();
       pickColor('#4338ca');
@@ -1330,8 +1282,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   </script>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
  </head>
- <body class="min-h-screen bg-gray-50">
-  <!-- LOADING SCREEN -->
+ <body class="min-h-screen bg-gray-50"><!-- LOADING SCREEN -->
   <div id="loading-screen" class="h-full w-full flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black z-50">
    <div class="text-center">
     <div class="w-12 h-12 rounded-full border-4 border-gray-600 border-t-white animate-spin mx-auto mb-4"></div>
@@ -1346,28 +1297,23 @@ document.addEventListener('DOMContentLoaded', async function() {
       <p class="text-gray-500 text-sm mt-2">Crie cartões digitais profissionais</p>
      </div>
      <div class="space-y-4">
-      <div>
-       <label class="block text-xs font-medium text-gray-600 mb-1">Email</label> <input id="login-email" type="email" placeholder="seu@email.com" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Email</label> <input id="login-email" type="email" placeholder="seu@email.com" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
       </div>
-      <div>
-       <label class="block text-xs font-medium text-gray-600 mb-1">Senha</label> <input id="login-password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
+      <div><label class="block text-xs font-medium text-gray-600 mb-1">Senha</label> <input id="login-password" type="password" placeholder="••••••••" class="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-green-500">
       </div><button onclick="doLogin(event)" class="w-full py-2.5 rounded-lg text-white font-medium text-sm transition" style="background: #1a6b4a;">Entrar</button>
      </div>
      <div id="login-error" class="text-xs text-red-600 text-center mt-4 hidden"></div>
     </div>
    </div>
   </div><!-- APP -->
-  <div id="app" style="display:none" class="h-full w-full flex">
-   <!-- SIDEBAR -->
+  <div id="app" style="display:none" class="h-full w-full flex"><!-- SIDEBAR -->
    <aside id="sidebar" class="w-60 flex-shrink-0 flex flex-col" style="background: linear-gradient(180deg, #312e81 0%, #4338ca 100%);">
     <div class="p-5 pb-3">
      <h1 class="text-white text-xl font-bold" style="font-family: 'Playfair Display', serif;">VCard Creator</h1>
      <p class="text-indigo-300 text-xs mt-1">Cartões digitais profissionais</p>
     </div>
-    <nav class="flex-1 px-3 py-2 space-y-1">
-     <button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
-     <div id="admin-section" style="display:none;" class="border-t border-indigo-600 mt-2 pt-2">
-      <button onclick="navTo('admin')" data-nav="admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="shield" class="w-4 h-4"></i> Administração </button>
+    <nav class="flex-1 px-3 py-2 space-y-1"><button onclick="navTo('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard </button> <button onclick="navTo('perfil')" data-nav="perfil" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="user" class="w-4 h-4"></i> Perfil </button> <button onclick="navTo('contactos')" data-nav="contactos" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="phone" class="w-4 h-4"></i> Contactos </button> <button onclick="navTo('design')" data-nav="design" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="palette" class="w-4 h-4"></i> Design </button> <button onclick="navTo('share')" data-nav="share" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="link-2" class="w-4 h-4"></i> Partilhar </button> <button onclick="navTo('export')" data-nav="export" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="download" class="w-4 h-4"></i> Exportar </button>
+     <div id="admin-section" style="display:none;" class="border-t border-indigo-600 mt-2 pt-2"><button onclick="navTo('admin')" data-nav="admin" class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-indigo-200 hover:text-white"> <i data-lucide="shield" class="w-4 h-4"></i> Administração </button>
      </div>
     </nav>
     <div class="p-4 border-t border-indigo-600">
@@ -1376,23 +1322,19 @@ document.addEventListener('DOMContentLoaded', async function() {
      </div><button onclick="doLogout()" class="w-full mt-3 px-3 py-2 rounded-lg text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 transition flex items-center justify-center gap-2"> <i data-lucide="log-out" class="w-4 h-4"></i> Sair </button>
     </div>
    </aside>
-   <div class="flex-1 flex flex-col h-full overflow-hidden">
-    <!-- TOPBAR -->
+   <div class="flex-1 flex flex-col h-full overflow-hidden"><!-- TOPBAR -->
     <header class="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 flex-shrink-0">
      <div>
       <h2 id="section-title" class="text-lg font-semibold text-gray-800">Dashboard</h2>
       <p id="section-desc" class="text-xs text-gray-400">Os seus cartões guardados</p>
      </div>
-     <div class="flex items-center gap-2">
-      <button id="save-btn" onclick="saveCard()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium" style="background: #4338ca; display:none;"> <i data-lucide="save" class="w-4 h-4"></i> Guardar </button>
+     <div class="flex items-center gap-2"><button id="save-btn" onclick="saveCard()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium" style="background: #4338ca; display:none;"> <i data-lucide="save" class="w-4 h-4"></i> Guardar </button>
      </div>
     </header><!-- CONTENT AREA -->
-    <div class="flex-1 overflow-auto p-6 pt-8">
-     <!-- DASHBOARD -->
+    <div class="flex-1 overflow-auto p-6 pt-8"><!-- DASHBOARD -->
      <section id="sec-dashboard" class="fade-in">
       <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-      <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-gray-400">
-       <i data-lucide="credit-card" class="w-16 h-16 mb-4 opacity-30"></i>
+      <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-gray-400"><i data-lucide="credit-card" class="w-16 h-16 mb-4 opacity-30"></i>
        <p class="text-lg font-medium">Nenhum cartão criado</p>
        <p class="text-sm mt-1">Comece a criar o seu primeiro cartão digital</p>
       </div>
@@ -1402,38 +1344,30 @@ document.addEventListener('DOMContentLoaded', async function() {
        <div class="space-y-4">
         <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
          <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Fotos</h4>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-cover">Foto de Capa</label> <input id="f-cover" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
+         <div><label class="block text-xs font-medium text-gray-500 mb-2" for="f-cover">Foto de Capa</label> <input id="f-cover" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
           <p class="text-xs text-gray-400 mt-1">Recomendado: 800x300px</p>
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
-          <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p><button type="button" id="edit-avatar-btn" onclick="openAvatarEditor()" class="mt-2 px-3 py-1.5 rounded-lg text-sm text-white" style="background:#4338ca; display:none;">Editar Foto</button>
+         <div><label class="block text-xs font-medium text-gray-500 mb-2" for="f-avatar">Foto de Perfil</label> <input id="f-avatar" type="file" accept="image/*" class="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm">
+          <p class="text-xs text-gray-400 mt-1">Recomendado: Quadrado (200x200px)</p>
          </div>
         </div>
         <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
          <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Informações Pessoais</h4>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-name">Nome Completo</label> <input id="f-name" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="João Silva" style="--accent:#4338ca;">
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-role">Cargo / Função</label> <input id="f-role" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Designer Gráfico">
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-company">Empresa</label> <input id="f-company" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Estúdio Criativo">
          </div>
-         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1" for="f-about">Sobre</label> <textarea id="f-about" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none" rows="3" placeholder="Descreva você ou a sua empresa..."></textarea>
+         <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-about">Sobre</label> <textarea id="f-about" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm resize-none" rows="3" placeholder="Descreva você ou a sua empresa..."></textarea>
          </div>
         </div>
        </div><!-- LIVE PREVIEW -->
        <div>
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Pré-visualização</h4>
         <div id="preview-card" class="bg-white rounded-2xl border border-gray-200 shadow-sm" style="overflow:visible;">
-         <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;">
-          <img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
-          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow-hidden z-10" style="color:#4338ca;">
-           <img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+         <div id="preview-banner" class="h-24 relative" style="background: linear-gradient(135deg, #4338ca, #6366f1); overflow:visible;"><img id="preview-cover-img" style="display:none; width:100%; height:100%; object-fit:cover;">
+          <div class="absolute -bottom-8 left-5 w-16 h-16 rounded-full bg-white border-4 border-white shadow flex items-center justify-center text-2xl font-bold overflow:hidden z-10" style="color:#4338ca;"><img id="preview-avatar-img" style="display:none; width:100%; height:100%; object-fit:cover;">
            <div id="preview-avatar">
             J
            </div>
@@ -1444,17 +1378,13 @@ document.addEventListener('DOMContentLoaded', async function() {
           <p id="preview-role" class="text-sm text-gray-500">Designer Gráfico</p>
           <p id="preview-company" class="text-xs text-gray-400 mt-0.5">Estúdio Criativo</p>
           <div class="mt-4 space-y-2">
-           <div id="preview-phone-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="phone" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-phone"></span>
+           <div id="preview-phone-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="phone" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-phone"></span>
            </div>
-           <div id="preview-email-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="mail" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-email"></span>
+           <div id="preview-email-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="mail" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-email"></span>
            </div>
-           <div id="preview-web-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="globe" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-web"></span>
+           <div id="preview-web-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="globe" class="w-3.5 h-3.5" style="color:#4338ca;"></i> <span id="preview-web"></span>
            </div>
-           <div id="preview-addr-row" class="flex items-center gap-2 text-sm text-gray-600 hidden">
-            <i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:#4338ca; flex-shrink:0; margin-top:2px;"></i> <span id="preview-addr" style="word-break:break-word; line-height:1.5; white-space:pre-wrap;"></span>
+           <div id="preview-addr-row" class="flex items-center gap-2 text-sm text-gray-600 hidden"><i data-lucide="map-pin" class="w-3.5 h-3.5" style="color:#4338ca; flex-shrink:0; margin-top:2px;"></i> <span id="preview-addr" style="word-break:break-word; line-height:1.5; white-space:pre-wrap;"></span>
            </div>
           </div>
           <div id="preview-socials" class="flex gap-2 mt-3 flex-wrap"></div>
@@ -1467,41 +1397,30 @@ document.addEventListener('DOMContentLoaded', async function() {
       <div class="max-w-lg space-y-4">
        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Dados de Contacto</h4>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telemóvel</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" oninput="updatePreview()">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-phone">Telemóvel</label> <input id="f-phone" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" oninput="updatePreview()">
         </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" type="email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" oninput="updatePreview()">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-email">Email</label> <input id="f-email" type="email" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" oninput="updatePreview()">
         </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-website">Website</label> <input id="f-website" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="www.joaosilva.com">
         </div>
-        <div>
-         <label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
+        <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-address">Morada</label> <input id="f-address" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="Lisboa, Portugal">
         </div>
         <div class="pt-3 border-t border-gray-200">
          <h5 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Redes Sociais</h5>
          <div class="space-y-3">
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-instagram">Instagram</label> <input id="f-instagram" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-facebook">Facebook</label> <input id="f-facebook" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu.perfil">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-linkedin">LinkedIn</label> <input id="f-linkedin" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="seu-perfil">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-whatsapp">WhatsApp</label> <input id="f-whatsapp" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+244 9xx xxx xxx">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-youtube">YouTube</label> <input id="f-youtube" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_canal">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-tiktok">TikTok</label> <input id="f-tiktok" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
           </div>
-          <div>
-           <label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
+          <div><label class="block text-xs font-medium text-gray-500 mb-1" for="f-twitter">Twitter/X</label> <input id="f-twitter" class="field-input w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="@seu_usuario">
           </div>
          </div>
         </div>
@@ -1512,11 +1431,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       <div class="max-w-2xl space-y-6">
        <div class="bg-white rounded-xl p-5 border border-gray-200">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Cor de Destaque</h4>
-        <div class="flex flex-wrap gap-3">
-         <button onclick="pickColor('#4338ca')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#4338ca;" data-color="#4338ca"></button> <button onclick="pickColor('#0891b2')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#0891b2;" data-color="#0891b2"></button> <button onclick="pickColor('#059669')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#059669;" data-color="#059669"></button> <button onclick="pickColor('#d97706')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#d97706;" data-color="#d97706"></button> <button onclick="pickColor('#dc2626')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#dc2626;" data-color="#dc2626"></button> <button onclick="pickColor('#7c3aed')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#7c3aed;" data-color="#7c3aed"></button> <button onclick="pickColor('#be185d')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#be185d;" data-color="#be185d"></button> <button onclick="pickColor('#1e293b')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#1e293b;" data-color="#1e293b"></button>
+        <div class="flex flex-wrap gap-3"><button onclick="pickColor('#4338ca')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#4338ca;" data-color="#4338ca"></button> <button onclick="pickColor('#0891b2')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#0891b2;" data-color="#0891b2"></button> <button onclick="pickColor('#059669')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#059669;" data-color="#059669"></button> <button onclick="pickColor('#d97706')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#d97706;" data-color="#d97706"></button> <button onclick="pickColor('#dc2626')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#dc2626;" data-color="#dc2626"></button> <button onclick="pickColor('#7c3aed')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#7c3aed;" data-color="#7c3aed"></button> <button onclick="pickColor('#be185d')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#be185d;" data-color="#be185d"></button> <button onclick="pickColor('#1e293b')" class="color-swatch w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition" style="background:#1e293b;" data-color="#1e293b"></button>
         </div>
-        <div class="mt-4 flex items-center gap-3">
-         <label class="text-xs text-gray-500">Cor personalizada:</label> <input type="color" id="custom-color" value="#4338ca" onchange="pickColor(this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+        <div class="mt-4 flex items-center gap-3"><label class="text-xs text-gray-500">Cor personalizada:</label> <input type="color" id="custom-color" value="#4338ca" onchange="pickColor(this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
         </div>
        </div>
        <div class="bg-white rounded-xl p-5 border border-gray-200">
@@ -1541,14 +1458,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Partilhar Cartão</h4>
         <p class="text-sm text-gray-500 mb-4">Selecione um cartão para gerar um link público e QR Code</p><select id="share-select" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm mb-3"> <option value="">-- Escolha um cartão --</option> </select>
         <div id="share-container" class="hidden space-y-4">
-         <div>
-          <label class="text-xs font-medium text-gray-600">Link Público:</label>
-          <div class="flex gap-2 mt-1">
-           <input id="share-link" type="text" readonly class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50"> <button onclick="copyLink()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Copiar</button>
+         <div><label class="text-xs font-medium text-gray-600">Link Público:</label>
+          <div class="flex gap-2 mt-1"><input id="share-link" type="text" readonly class="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-gray-50"> <button onclick="copyLink()" class="px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition">Copiar</button>
           </div>
          </div>
-         <div>
-          <label class="text-xs font-medium text-gray-600 mb-2 block">QR Code:</label>
+         <div><label class="text-xs font-medium text-gray-600 mb-2 block">QR Code:</label>
           <div id="share-qr" class="flex justify-center p-4 bg-gray-50 rounded-lg"></div>
          </div>
         </div>
@@ -1560,11 +1474,9 @@ document.addEventListener('DOMContentLoaded', async function() {
        <div class="bg-white rounded-xl p-5 border border-gray-200 space-y-4">
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Exportar Cartão</h4>
         <p class="text-sm text-gray-500">Escolha o formato de exportação para o cartão.</p>
-        <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden">
-         <i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.
+        <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden"><i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.
         </div>
-        <div id="export-actions" class="flex gap-3">
-         <button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF </button> <button onclick="downloadQR()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="qr-code" class="w-5 h-5"></i> QR Code </button>
+        <div id="export-actions" class="flex gap-3"><button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF </button> <button onclick="downloadQR()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"> <i data-lucide="qr-code" class="w-5 h-5"></i> QR Code </button>
         </div>
        </div>
        <div id="qr-container" class="bg-white rounded-xl p-5 border border-gray-200 hidden">
@@ -1596,11 +1508,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         <div class="bg-gray-50 rounded-lg p-4 mb-4 space-y-3">
          <h5 class="text-sm font-semibold text-gray-700 mb-3">Filtros e Ações</h5>
          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div><label class="block text-xs font-medium text-gray-600 mb-1">Pesquisar</label> <input type="text" id="admin-search" placeholder="Nome ou cargo..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500" oninput="adminSearchQuery = this.value; loadAdminPanel();">
+          <div>
+           <label class="block text-xs font-medium text-gray-600 mb-1">Pesquisar</label> <input type="text" id="admin-search" placeholder="Nome ou cargo..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500" oninput="adminSearchQuery = this.value; loadAdminPanel();">
           </div>
-          <div><label class="block text-xs font-medium text-gray-600 mb-1">Empresa</label> <select id="admin-company-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500" onchange="adminCompanyFilter = this.value; loadAdminPanel();"> <option value="">Todas as Empresas</option> </select>
+          <div>
+           <label class="block text-xs font-medium text-gray-600 mb-1">Empresa</label> <select id="admin-company-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500" onchange="adminCompanyFilter = this.value; loadAdminPanel();"> <option value="">Todas as Empresas</option> </select>
           </div>
-          <div><label class="block text-xs font-medium text-gray-600 mb-1">&nbsp;</label> <button id="admin-export-mass-btn" onclick="adminExportMass()" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition flex items-center justify-center gap-2"> <i data-lucide="download" class="w-4 h-4"></i> Exportar Todos (CSV) </button>
+          <div>
+           <label class="block text-xs font-medium text-gray-600 mb-1">&nbsp;</label> <button id="admin-export-mass-btn" onclick="adminExportMass()" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition flex items-center justify-center gap-2"> <i data-lucide="download" class="w-4 h-4"></i> Exportar Todos (CSV) </button>
           </div>
          </div>
         </div>
@@ -1616,14 +1531,12 @@ document.addEventListener('DOMContentLoaded', async function() {
    <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
     <h4 class="font-semibold text-gray-800 mb-2">Eliminar cartão?</h4>
     <p class="text-sm text-gray-500 mb-4">Esta ação não pode ser desfeita.</p>
-    <div class="flex gap-3 justify-end">
-     <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button> <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
+    <div class="flex gap-3 justify-end"><button onclick="closeDeleteModal()" class="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancelar</button> <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg text-sm text-white bg-red-500 hover:bg-red-600">Eliminar</button>
     </div>
    </div>
   </div><!-- TOAST -->
   <div id="toast" class="fixed top-4 right-4 z-50 hidden">
-   <div class="toast-msg flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white" style="background:#4338ca;">
-    <i data-lucide="check-circle" class="w-4 h-4"></i> <span id="toast-text"></span>
+   <div class="toast-msg flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white" style="background:#4338ca;"><i data-lucide="check-circle" class="w-4 h-4"></i> <span id="toast-text"></span>
    </div>
   </div>
   <script>
@@ -1653,179 +1566,23 @@ document.getElementById('f-avatar').addEventListener('change', function(e) {
   const reader = new FileReader();
   reader.onload = function(event) {
     avatarImageData = file;
-    const btn = document.getElementById('edit-avatar-btn');
-    btn.style.display = 'block';
     updatePreview();
   };
   reader.readAsDataURL(file);
 });
 
-function openAvatarEditor() {
-  if (!avatarImageData || !(avatarImageData instanceof File)) {
-    showToast('Selecione uma imagem primeiro');
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    const modal = document.getElementById('avatar-editor-modal');
-    const editorImg = document.getElementById('avatar-editor-img');
-    const previewImg = document.getElementById('avatar-preview-circle');
-    
-    editorImg.src = event.target.result;
-    previewImg.src = event.target.result;
-    
-    avatarEditorData = { x: 0, y: 0, zoom: 100, isDragging: false, startX: 0, startY: 0 };
-    updateAvatarEditorDisplay();
-    
-    modal.classList.remove('hidden');
-    lucide.createIcons();
-    
-    setupAvatarDragging();
-  };
-  reader.readAsDataURL(avatarImageData);
-}
-
-function setupAvatarDragging() {
-  const img = document.getElementById('avatar-editor-img');
-  const container = img.parentElement;
-  const zoomSlider = document.getElementById('avatar-zoom');
-
-  img.onmousedown = (e) => {
-    avatarEditorData.isDragging = true;
-    avatarEditorData.startX = e.clientX - avatarEditorData.x;
-    avatarEditorData.startY = e.clientY - avatarEditorData.y;
-    img.style.cursor = 'grabbing';
-  };
-
-  document.onmousemove = (e) => {
-    if (!avatarEditorData.isDragging) return;
-    avatarEditorData.x = e.clientX - avatarEditorData.startX;
-    avatarEditorData.y = e.clientY - avatarEditorData.startY;
-    updateAvatarEditorDisplay();
-  };
-
-  document.onmouseup = () => {
-    avatarEditorData.isDragging = false;
-    img.style.cursor = 'grab';
-  };
-
-  zoomSlider.oninput = (e) => {
-    avatarEditorData.zoom = parseInt(e.target.value);
-    document.getElementById('zoom-value').textContent = avatarEditorData.zoom;
-    updateAvatarEditorDisplay();
-  };
-}
-
-function updateAvatarEditorDisplay() {
-  const img = document.getElementById('avatar-editor-img');
-  const previewImg = document.getElementById('avatar-preview-circle');
-  const scale = avatarEditorData.zoom / 100;
-
-  img.style.transform = `translate(${avatarEditorData.x}px, ${avatarEditorData.y}px) scale(${scale})`;
-  previewImg.style.transform = `translate(${avatarEditorData.x}px, ${avatarEditorData.y}px) scale(${scale})`;
-}
-
-function saveAvatarEdit() {
-  const modal = document.getElementById('avatar-editor-modal');
-  const previewImg = document.getElementById('avatar-preview-circle');
-  const previewCircle = document.getElementById('preview-avatar-img');
-  
-  previewCircle.src = previewImg.src;
-  previewCircle.style.transform = `translate(${avatarEditorData.x}px, ${avatarEditorData.y}px) scale(${avatarEditorData.zoom / 100})`;
-  previewCircle.style.display = 'block';
-  document.getElementById('preview-avatar').style.display = 'none';
-  
-  modal.classList.add('hidden');
-  updatePreview();
-  showToast('Foto de perfil guardada!');
-}
-
-function closeAvatarEditor() {
-  document.getElementById('avatar-editor-modal').classList.add('hidden');
-  document.onmousemove = null;
-  document.onmouseup = null;
-}
-
-function addPhoneField(value = '') {
-  const id = 'phone-' + Date.now() + Math.random();
-  phoneFields.push(id);
-  const container = document.getElementById('phones-container');
-  const div = document.createElement('div');
-  div.className = 'flex gap-2';
-  div.innerHTML = `
-    <input type="text" id="${id}" class="field-input flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="+351 9xx xxx xxx" value="${escHtml(value)}" oninput="updatePreview()">
-    <button type="button" onclick="removePhoneField('${id}')" class="px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition">
-      <i data-lucide="trash-2" class="w-4 h-4"></i>
-    </button>
-  `;
-  container.appendChild(div);
-  lucide.createIcons();
-}
-
-function removePhoneField(id) {
-  const idx = phoneFields.indexOf(id);
-  if (idx > -1) phoneFields.splice(idx, 1);
-  const el = document.getElementById(id);
-  if (el) el.parentElement.remove();
-  updatePreview();
-}
-
-function getAllPhones() {
-  return phoneFields
-    .map(id => document.getElementById(id)?.value || '')
-    .filter(v => v.trim());
-}
-
-function getFirstPhone() {
-  const phones = getAllPhones();
-  return phones.length > 0 ? phones[0] : '';
-}
-
-function addEmailField(value = '') {
-  const id = 'email-' + Date.now() + Math.random();
-  emailFields.push(id);
-  const container = document.getElementById('emails-container');
-  const div = document.createElement('div');
-  div.className = 'flex gap-2';
-  div.innerHTML = `
-    <input type="email" id="${id}" class="field-input flex-1 px-3 py-2.5 rounded-lg border border-gray-200 text-sm" placeholder="email@example.com" value="${escHtml(value)}" oninput="updatePreview()">
-    <button type="button" onclick="removeEmailField('${id}')" class="px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition">
-      <i data-lucide="trash-2" class="w-4 h-4"></i>
-    </button>
-  `;
-  container.appendChild(div);
-  lucide.createIcons();
-}
-
-function removeEmailField(id) {
-  const idx = emailFields.indexOf(id);
-  if (idx > -1) emailFields.splice(idx, 1);
-  const el = document.getElementById(id);
-  if (el) el.parentElement.remove();
-  updatePreview();
-}
-
-function getAllEmails() {
-  return emailFields
-    .map(id => document.getElementById(id)?.value || '')
-    .filter(v => v.trim());
-}
-
-function getFirstEmail() {
-  const emails = getAllEmails();
-  return emails.length > 0 ? emails[0] : '';
-}
-
 function adminDownloadCard(card) {
-  const vcardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${card.nome}\nTITLE:${card.cargo || ''}\nORG:${card.empresa || ''}\n`;
-  const telefones = card.telefones ? card.telefones.split('|').filter(t => t) : [];
-  const emails = card.emails ? card.emails.split('|').filter(e => e) : [];
-  
-  telefones.forEach(tel => vcardData += `TEL;TYPE=CELL:${tel}\n`);
-  emails.forEach(email => vcardData += `EMAIL:${email}\n`);
-  
-  const vcf = vcardData + `END:VCARD`;
+  const parts = (card.nome || '').split(' ');
+  const last = parts.length > 1 ? parts.pop() : '';
+  const first = parts.join(' ');
+  let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${card.nome}\n`;
+  if (card.cargo) vcf += `TITLE:${card.cargo}\n`;
+  if (card.empresa) vcf += `ORG:${card.empresa}\n`;
+  if (card.telemovel) vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
+  if (card.email) vcf += `EMAIL:${card.email}\n`;
+  if (card.website) vcf += `URL:${card.website}\n`;
+  if (card.address) vcf += `ADR;TYPE=WORK:;;${card.address};;;;\n`;
+  vcf += `END:VCARD`;
   
   const blob = new Blob([vcf], { type: 'text/vcard' });
   const a = document.createElement('a');
@@ -1836,5 +1593,5 @@ function adminDownloadCard(card) {
   showToast('Cartão descarregado!');
 }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f35c671a0a077dd',t:'MTc3NzM3NjI0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f35ba17778077dd',t:'MTc3NzM3NTc0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
