@@ -174,7 +174,7 @@ async function loadPublicCard(cardId) {
     // Cliente público sem autenticação para cartões públicos
     const sbPublic = supabase.createClient('https://tgobchnkeewoonnsesqv.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs');
     
-    const { data, error } = await sbPublic.from('vcards').select('*').eq('id', cardId).maybeSingle();
+    const { data, error } = await sbPublic.from('vcards').select('*').eq('id', cardId).or('is_public.eq.true,is_public.is.null').maybeSingle();
     
     if (error || !data) {
       const loading = document.getElementById('loading-screen');
@@ -650,7 +650,7 @@ async function saveCard() {
       avatar_url: avatarUrl,
       cor_principal: currentColor,
       template: currentTemplate,
-      is_public: editingCard?.is_public ?? true,
+      is_public: true,
       updated_at: new Date().toISOString()
     };
 
@@ -1797,5 +1797,5 @@ function adminDownloadCard(card) {
   showToast('Cartão descarregado!');
 }
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f35f695725a77dd',t:'MTc3NzM3ODIyMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9f360503b6f477dd',t:'MTc3NzM3ODgxMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
